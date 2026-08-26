@@ -1,0 +1,21 @@
+{
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "japanese-quiz-game",
+	"compatibility_date": "2026-08-26",
+	"compatibility_flags": ["nodejs_als"],
+	"main": ".svelte-kit/cloudflare/_worker.js",
+	"assets": {
+		"binding": "ASSETS",
+		"directory": ".svelte-kit/cloudflare",
+	},
+	"workers_dev": true,
+	"preview_urls": true,
+	"d1_databases": [
+		{
+			"binding": "quizdb",
+			"database_name": "quizdb",
+			"database_id": "624a4e4b-483b-4285-81c4-ad13290ee4c6",
+			"remote": true,
+		},
+	],
+}
