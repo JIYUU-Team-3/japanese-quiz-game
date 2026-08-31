@@ -7,6 +7,7 @@
 		// reached via GlobalProps.mainModule in worker-configuration.d.ts. This
 		// project has no hand-written .js, so nothing of ours goes unchecked.
 		"checkJs": false,
+		"skipLibCheck": true,
 		"sourceMap": true,
 		"strict": true,
 		"types": ["$app/types", "./worker-configuration.d.ts"]

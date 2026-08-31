@@ -123,9 +123,10 @@ export const sessions = sqliteTable(
 		id: text('id')
 			.primaryKey()
 			.$defaultFn(() => crypto.randomUUID()),
-		playerId: integer('player_id')
-			.notNull()
-			.references(() => players.id, { onDelete: 'cascade', onUpdate: 'cascade' }),
+		playerId: integer('player_id').references(() => players.id, {
+			onDelete: 'set null',
+			onUpdate: 'cascade',
+		}),
 		level: text('level', { enum: jlptLevels }).notNull(),
 		mode: text('mode', { enum: sessionModes }).notNull().default('practice'),
 		topicId: integer('topic_id').references(() => topics.id, {
