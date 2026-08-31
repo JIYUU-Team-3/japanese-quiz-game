@@ -6,7 +6,7 @@ import {
 	questionFormats,
 	sessionModes,
 	sessions,
-} from '$lib/server/db/schema'
+} from '#lib/server/db/schema.js'
 
 export const load: PageServerLoad = async ({ locals }) => {
 	const [topics, sessions_list] = await Promise.all([

@@ -1,9 +1,9 @@
 import { sequence } from '@sveltejs/kit/hooks'
-import type { Handle } from '@sveltejs/kit'
+import type { Handle } from '@sveltejs/kit/hooks'
 import { getTextDirection } from '#lib/paraglide/runtime.js'
 import { paraglideMiddleware } from '#lib/paraglide/server.js'
-import { get_db } from '$lib/server/db'
-import { get_repositories } from '$lib/server/db/repositories'
+import { get_db } from '#lib/server/db/index.js'
+import { get_repositories } from '#lib/server/db/repositories/index.js'
 
 const handle_db: Handle = ({ event, resolve }) => {
 	event.locals.db = get_db(event.platform!.env.quizdb)
