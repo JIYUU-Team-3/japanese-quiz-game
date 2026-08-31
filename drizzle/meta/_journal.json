@@ -5,8 +5,15 @@
     {
       "idx": 0,
       "version": "6",
-      "when": 1788146351302,
-      "tag": "0000_bored_sentinels",
+      "when": 1788103938002,
+      "tag": "0000_init_quiz_schema",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1788151936479,
+      "tag": "0001_nullable_session_player",
       "breakpoints": true
     }
   ]

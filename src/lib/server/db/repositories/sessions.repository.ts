@@ -8,7 +8,7 @@ export class SessionsRepository extends BaseRepository {
 	}
 
 	list_by_player(player_id: number) {
-		return this.db.select().from(sessions).where(eq(sessions.player_id, player_id))
+		return this.db.select().from(sessions).where(eq(sessions.playerId, player_id))
 	}
 
 	create(input: typeof sessions.$inferInsert) {

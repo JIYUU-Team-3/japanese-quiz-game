@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "aa5033b8-765e-4b18-b8c3-5221d94bc1eb",
-  "prevId": "00000000-0000-0000-0000-000000000000",
+  "id": "76178a3c-6c8f-4acc-8db9-cc3e522559b0",
+  "prevId": "aa5033b8-765e-4b18-b8c3-5221d94bc1eb",
   "tables": {
     "choices": {
       "name": "choices",
@@ -399,7 +399,7 @@
           "name": "player_id",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true,
+          "notNull": false,
           "autoincrement": false
         },
         "level": {
@@ -531,7 +531,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
+          "onDelete": "set null",
           "onUpdate": "cascade"
         },
         "sessions_topic_id_topics_id_fk": {

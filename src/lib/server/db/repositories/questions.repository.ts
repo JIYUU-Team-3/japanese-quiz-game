@@ -8,7 +8,7 @@ export class QuestionsRepository extends BaseRepository {
 	}
 
 	list_by_topic(topic_id: number) {
-		return this.db.select().from(questions).where(eq(questions.topic_id, topic_id))
+		return this.db.select().from(questions).where(eq(questions.topicId, topic_id))
 	}
 
 	create(input: typeof questions.$inferInsert) {

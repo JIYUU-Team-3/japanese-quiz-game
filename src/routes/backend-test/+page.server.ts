@@ -1,20 +1,20 @@
 import { and, desc, eq, isNotNull } from 'drizzle-orm'
 import type { Actions, PageServerLoad } from './$types'
 import {
-	jlpt_levels,
+	jlptLevels,
 	players,
-	question_formats,
-	session_modes,
+	questionFormats,
+	sessionModes,
 	sessions,
 } from '$lib/server/db/schema'
 
 export const load: PageServerLoad = async ({ locals }) => {
 	const [topics, sessions_list] = await Promise.all([
 		locals.repos.topics.list(),
-		locals.db.select().from(sessions).orderBy(desc(sessions.started_at)).limit(20),
+		locals.db.select().from(sessions).orderBy(desc(sessions.startedAt)).limit(20),
 	])
 
-	return { topics, sessions_list, jlpt_levels, question_formats, session_modes }
+	return { topics, sessions_list, jlpt_levels: jlptLevels, question_formats: questionFormats, session_modes: sessionModes }
 }
 
 export const actions: Actions = {
@@ -22,11 +22,11 @@ export const actions: Actions = {
 		const form = await request.formData()
 		const row = await locals.repos.topics.create({
 			slug: String(form.get('slug')),
-			name_en: String(form.get('name_en')),
-			name_ja: String(form.get('name_ja')),
-			min_level: String(form.get('min_level')) as (typeof jlpt_levels)[number],
-			sort_order: Number(form.get('sort_order')),
-			is_active: form.get('is_active') === 'on',
+			nameEn: String(form.get('name_en')),
+			nameJa: String(form.get('name_ja')),
+			minLevel: String(form.get('min_level')) as (typeof jlptLevels)[number],
+			sortOrder: Number(form.get('sort_order')),
+			isActive: form.get('is_active') === 'on',
 		})
 		return { action: 'create_topic', result: row }
 	},
@@ -34,16 +34,16 @@ export const actions: Actions = {
 	create_question: async ({ request, locals }) => {
 		const form = await request.formData()
 		const row = await locals.repos.questions.create({
-			level: String(form.get('level')) as (typeof jlpt_levels)[number],
-			topic_id: Number(form.get('topic_id')),
-			format: String(form.get('format')) as (typeof question_formats)[number],
+			level: String(form.get('level')) as (typeof jlptLevels)[number],
+			topicId: Number(form.get('topic_id')),
+			format: String(form.get('format')) as (typeof questionFormats)[number],
 			prompt: String(form.get('prompt')),
-			prompt_furigana: form.get('prompt_furigana') ? String(form.get('prompt_furigana')) : null,
-			prompt_en: form.get('prompt_en') ? String(form.get('prompt_en')) : null,
+			promptFurigana: form.get('prompt_furigana') ? String(form.get('prompt_furigana')) : null,
+			promptEn: form.get('prompt_en') ? String(form.get('prompt_en')) : null,
 			explanation: form.get('explanation') ? String(form.get('explanation')) : null,
 			difficulty: Number(form.get('difficulty')),
-			is_active: form.get('is_active') === 'on',
-			created_at: new Date(),
+			isActive: form.get('is_active') === 'on',
+			createdAt: new Date(),
 		})
 		return { action: 'create_question', result: row }
 	},
@@ -51,9 +51,9 @@ export const actions: Actions = {
 	create_choice: async ({ request, locals }) => {
 		const form = await request.formData()
 		const row = await locals.repos.choices.create({
-			question_id: Number(form.get('question_id')),
+			questionId: Number(form.get('question_id')),
 			body: String(form.get('body')),
-			is_correct: form.get('is_correct') === 'on',
+			isCorrect: form.get('is_correct') === 'on',
 			position: Number(form.get('position')),
 		})
 		return { action: 'create_choice', result: row }
@@ -77,16 +77,16 @@ export const actions: Actions = {
 		const form = await request.formData()
 		const topic_id_raw = form.get('topic_id')
 		const [row] = await locals.repos.sessions.create({
-			level: String(form.get('level')) as (typeof jlpt_levels)[number],
-			mode: String(form.get('mode')) as (typeof session_modes)[number],
-			topic_id: topic_id_raw ? Number(topic_id_raw) : null,
+			level: String(form.get('level')) as (typeof jlptLevels)[number],
+			mode: String(form.get('mode')) as (typeof sessionModes)[number],
+			topicId: topic_id_raw ? Number(topic_id_raw) : null,
 			status: 'in_progress',
-			question_count: Number(form.get('question_count')),
-			correct_count: 0,
-			wrong_count: 0,
-			max_streak: 0,
+			questionCount: Number(form.get('question_count')),
+			correctCount: 0,
+			wrongCount: 0,
+			maxStreak: 0,
 			score: 0,
-			started_at: new Date(),
+			startedAt: new Date(),
 		})
 		return { action: 'create_session', result: row }
 	},
@@ -99,14 +99,14 @@ export const actions: Actions = {
 		const points = Number(form.get('points') || 0)
 
 		const answer = await locals.repos.session_answers.create({
-			session_id,
+			sessionId: session_id,
 			position,
-			question_id: Number(form.get('question_id')),
-			choice_id: form.get('choice_id') ? Number(form.get('choice_id')) : null,
-			is_correct,
-			answer_ms: form.get('answer_ms') ? Number(form.get('answer_ms')) : null,
+			questionId: Number(form.get('question_id')),
+			choiceId: form.get('choice_id') ? Number(form.get('choice_id')) : null,
+			isCorrect: is_correct,
+			answerMs: form.get('answer_ms') ? Number(form.get('answer_ms')) : null,
 			points,
-			answered_at: new Date(),
+			answeredAt: new Date(),
 		})
 
 		const session = await locals.repos.sessions.find_by_id(session_id)
@@ -115,14 +115,14 @@ export const actions: Actions = {
 		const answers = await locals.repos.session_answers.list_by_session(session_id)
 		let current_streak = 0
 		for (const a of [...answers].sort((a, b) => b.position - a.position)) {
-			if (!a.is_correct) break
+			if (!a.isCorrect) break
 			current_streak += 1
 		}
 
 		const [updated_session] = await locals.repos.sessions.update(session_id, {
-			correct_count: session.correct_count + (is_correct ? 1 : 0),
-			wrong_count: session.wrong_count + (is_correct ? 0 : 1),
-			max_streak: Math.max(session.max_streak, current_streak),
+			correctCount: session.correctCount + (is_correct ? 1 : 0),
+			wrongCount: session.wrongCount + (is_correct ? 0 : 1),
+			maxStreak: Math.max(session.maxStreak, current_streak),
 			score: session.score + points,
 		})
 
@@ -137,9 +137,9 @@ export const actions: Actions = {
 
 		const finished_at = new Date()
 		const [updated] = await locals.repos.sessions.update(session_id, {
-			status: 'completed',
-			finished_at,
-			duration_ms: finished_at.getTime() - session.started_at.getTime(),
+			status: 'finished',
+			finishedAt: finished_at,
+			durationMs: finished_at.getTime() - session.startedAt.getTime(),
 		})
 		return { action: 'complete_session', result: updated }
 	},
@@ -149,7 +149,7 @@ export const actions: Actions = {
 		try {
 			const [row] = await locals.repos.players.create({
 				name: String(form.get('name')),
-				created_at: new Date(),
+				createdAt: new Date(),
 			})
 			return { action: 'create_player', result: row }
 		} catch (e) {
@@ -161,7 +161,7 @@ export const actions: Actions = {
 		const form = await request.formData()
 		const session_id = String(form.get('session_id'))
 		const player_id = Number(form.get('player_id'))
-		const [row] = await locals.repos.sessions.update(session_id, { player_id })
+		const [row] = await locals.repos.sessions.update(session_id, { playerId: player_id })
 		return { action: 'link_session_player', result: row }
 	},
 
@@ -172,14 +172,14 @@ export const actions: Actions = {
 		const rows = await locals.db
 			.select({ session: sessions, player: players })
 			.from(sessions)
-			.innerJoin(players, eq(sessions.player_id, players.id))
+			.innerJoin(players, eq(sessions.playerId, players.id))
 			.where(
 				level
 					? and(
-							isNotNull(sessions.player_id),
-							eq(sessions.level, level as (typeof jlpt_levels)[number]),
+							isNotNull(sessions.playerId),
+							eq(sessions.level, level as (typeof jlptLevels)[number]),
 						)
-					: isNotNull(sessions.player_id),
+					: isNotNull(sessions.playerId),
 			)
 			.orderBy(desc(sessions.score))
 			.limit(10)
