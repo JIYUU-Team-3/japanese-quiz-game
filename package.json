@@ -3,6 +3,7 @@
 	"private": true,
 	"version": "0.0.1",
 	"type": "module",
+	"packageManager": "pnpm@11.23.0",
 	"scripts": {
 		"dev": "vite dev",
 		"build": "wrangler types --check && vite build",
@@ -16,6 +17,7 @@
 		"test:unit": "vitest",
 		"test": "npm run test:unit -- --run && npm run test:e2e",
 		"test:e2e": "playwright install && playwright test",
+		"preview:ci": "wrangler dev .svelte-kit/cloudflare/_worker.js --local --port 4173",
 		"gen": "wrangler types",
 		"db:push": "drizzle-kit push",
 		"db:generate": "drizzle-kit generate",
@@ -38,6 +40,7 @@
 		"eslint-config-prettier": "^10.1.8",
 		"eslint-plugin-svelte": "^3.19.0",
 		"globals": "^17.6.0",
+		"lefthook": "^2.1.12",
 		"playwright": "^1.62.1",
 		"prettier": "^3.8.3",
 		"prettier-plugin-svelte": "^4.1.0",
