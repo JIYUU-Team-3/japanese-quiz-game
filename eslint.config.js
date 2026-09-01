@@ -52,10 +52,13 @@ export default defineConfig(
 		rules: {
 			'@typescript-eslint/naming-convention': [
 				'error',
-				// Anything not matched by a more specific selector below.
+				// This project writes app code in snake_case. camelCase is also allowed
+				// because generated code (src/lib/paraglide) and the drizzle schema use
+				// it, and neither is ours to rename. What the rule still catches is
+				// accidental PascalCase or SCREAMING_CASE on ordinary identifiers.
 				{
 					selector: 'default',
-					format: ['camelCase'],
+					format: ['snake_case', 'camelCase'],
 					leadingUnderscore: 'allow',
 					trailingUnderscore: 'allow',
 				},
@@ -63,32 +66,30 @@ export default defineConfig(
 				// imported components are PascalCase.
 				{
 					selector: 'variable',
-					format: ['camelCase', 'UPPER_CASE', 'PascalCase'],
+					format: ['snake_case', 'camelCase', 'UPPER_CASE', 'PascalCase'],
 					leadingUnderscore: 'allow',
 				},
-				{ selector: 'import', format: ['camelCase', 'PascalCase'] },
+				{ selector: 'import', format: ['snake_case', 'camelCase', 'PascalCase'] },
 				{ selector: 'typeLike', format: ['PascalCase'] },
 				{ selector: 'enumMember', format: ['PascalCase', 'UPPER_CASE'] },
 
 				// SvelteKit's +server.ts route handlers are exported under the HTTP
-				// verb — `export function GET(...)`. The framework matches on that
+				// verb - `export function GET(...)`. The framework matches on that
 				// name, so it is not ours to rename.
 				{
 					selector: 'function',
 					modifiers: ['exported'],
-					format: ['camelCase', 'UPPER_CASE'],
+					format: ['snake_case', 'camelCase', 'UPPER_CASE'],
 				},
 
 				// --- Exemptions: names we don't get to choose ---
 
-				// Destructuring an external payload. `const { access_token } = await
+				// Destructuring an external payload. `const { accessToken } = await
 				// res.json()` shouldn't force a rename at the boundary.
 				{ selector: 'variable', modifiers: ['destructured'], format: null },
 
-				// Keys that cannot be written as bare identifiers — 'x-api-key',
-				// 'Content-Type', 'some.dotted.key'. Note this does NOT cover
-				// merely-quoted keys like 'snake_case', where the quotes are
-				// optional; those still error.
+				// Keys that cannot be written as bare identifiers - 'x-api-key',
+				// 'Content-Type', 'some.dotted.key'.
 				{
 					selector: [
 						'objectLiteralProperty',
@@ -100,18 +101,16 @@ export default defineConfig(
 					modifiers: ['requiresQuotes'],
 				},
 
-				// snake_case is allowed on runtime data keys only — API payloads,
-				// D1/SQL column names, env-shaped config. These are values crossing
-				// a boundary, so matching the other side is correct.
-				//
-				// Deliberately NOT extended to `typeProperty`: interfaces and type
-				// aliases are TypeScript's own surface, and stay camelCase so the
-				// exemption can't leak into hand-written domain types.
+				// Object shapes cross boundaries in both directions: our own snake_case
+				// data, drizzle's camelCase columns, SvelteKit action names, and
+				// env-shaped config. Let both styles through.
 				{
-					selector: 'objectLiteralProperty',
-					format: ['camelCase', 'snake_case', 'UPPER_CASE'],
+					selector: ['objectLiteralProperty', 'objectLiteralMethod'],
+					format: ['snake_case', 'camelCase', 'UPPER_CASE'],
 					leadingUnderscore: 'allow',
 				},
+				// Type surfaces follow whatever the values they describe use.
+				{ selector: 'typeProperty', format: ['snake_case', 'camelCase'] },
 			],
 		},
 	},
