@@ -46,11 +46,6 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # `wrangler types` bakes the keys from `.env` into worker-configuration.d.ts,
-      # so without one CI regenerates a file missing them and `--check` fails.
-      # Only the key names matter here, never the values - `.env.example` has them.
-      - name: Seed .env for wrangler types
-        run: cp -n .env.example .env
       - run: pnpm run check
 
   test:
@@ -81,11 +76,6 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # `wrangler types` bakes the keys from `.env` into worker-configuration.d.ts,
-      # so without one CI regenerates a file missing them and `--check` fails.
-      # Only the key names matter here, never the values - `.env.example` has them.
-      - name: Seed .env for wrangler types
-        run: cp -n .env.example .env
       - run: pnpm run build
 
   e2e:
@@ -100,11 +90,6 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      # `wrangler types` bakes the keys from `.env` into worker-configuration.d.ts,
-      # so without one CI regenerates a file missing them and `--check` fails.
-      # Only the key names matter here, never the values - `.env.example` has them.
-      - name: Seed .env for wrangler types
-        run: cp -n .env.example .env
       - run: pnpm exec playwright install --with-deps
       # playwright.config.ts serves this build via `pnpm preview:ci`
       # (wrangler --local: D1 is emulated, no Cloudflare credentials needed).
