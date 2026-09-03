@@ -70,39 +70,47 @@ test('the attract screen is rendered by the server, not fetched by the browser',
 	expect(html).not.toContain('LOADING…')
 })
 
-test('a run is graded by the server and lands on the ranking', async ({ page, request }) => {
-	const key = await answerKey(request, 'N4')
-	const name = `T${String(Date.now()).slice(-5)}`
+/*
+ * The only test here that writes. It is tagged so the post-deploy run can skip
+ * it — verifying a deployment must not leave a row on the real leaderboard.
+ */
+test(
+	'a run is graded by the server and lands on the ranking',
+	{ tag: '@writes' },
+	async ({ page, request }) => {
+		const key = await answerKey(request, 'N4')
+		const name = `T${String(Date.now()).slice(-5)}`
 
-	await page.goto('/')
-	await page.getByRole('link', { name: 'PUSH START' }).click()
+		await page.goto('/')
+		await page.getByRole('link', { name: 'PUSH START' }).click()
 
-	await expect(page.getByRole('heading', { name: 'SELECT COURSE' })).toBeVisible()
-	const n4 = page.getByRole('button').filter({ hasText: 'N4' })
-	await expect(n4).toContainText('QUESTIONS')
-	await n4.click()
+		await expect(page.getByRole('heading', { name: 'SELECT COURSE' })).toBeVisible()
+		const n4 = page.getByRole('button').filter({ hasText: 'N4' })
+		await expect(n4).toContainText('QUESTIONS')
+		await n4.click()
 
-	// Three right, then three wrong: a real score, then the third life spent.
-	for (let i = 0; i < 3; i++) await answer(page, key, true)
-	await expect(page.locator('.hud-bar')).toContainText('×2')
-	for (let i = 0; i < 3; i++) await answer(page, key, false)
+		// Three right, then three wrong: a real score, then the third life spent.
+		for (let i = 0; i < 3; i++) await answer(page, key, true)
+		await expect(page.locator('.hud-bar')).toContainText('×2')
+		for (let i = 0; i < 3; i++) await answer(page, key, false)
 
-	await expect(page.getByRole('heading', { name: 'GAME OVER' })).toBeVisible()
-	await expect(page.getByRole('heading', { name: /RANK IN/ })).toBeVisible()
+		await expect(page.getByRole('heading', { name: 'GAME OVER' })).toBeVisible()
+		await expect(page.getByRole('heading', { name: /RANK IN/ })).toBeVisible()
 
-	await page.getByRole('textbox').fill(name)
-	await page.getByRole('button', { name: 'ENTER' }).click()
+		await page.getByRole('textbox').fill(name)
+		await page.getByRole('button', { name: 'ENTER' }).click()
 
-	await expect(page.locator('.ranked')).toContainText('ENTRY RECORDED')
+		await expect(page.locator('.ranked')).toContainText('ENTRY RECORDED')
 
-	// The score shown on GAME OVER is the score the server recorded, so no
-	// "SERVER SCORE" correction should appear.
-	await expect(page.locator('.regraded')).toHaveCount(0)
+		// The score shown on GAME OVER is the score the server recorded, so no
+		// "SERVER SCORE" correction should appear.
+		await expect(page.locator('.regraded')).toHaveCount(0)
 
-	await page.getByRole('link', { name: 'VIEW RANKING' }).click()
-	await expect(page.locator('.table')).toContainText(name)
-	await expect(page.locator('.table')).toContainText('N4')
-})
+		await page.getByRole('link', { name: 'VIEW RANKING' }).click()
+		await expect(page.locator('.table')).toContainText(name)
+		await expect(page.locator('.table')).toContainText('N4')
+	},
+)
 
 test('the ranking filters by course on the server', async ({ page }) => {
 	await page.goto('/ranking')
