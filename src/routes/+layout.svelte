@@ -4,11 +4,13 @@
 	import { page } from '$app/state'
 	import { locales, localizeHref } from '#lib/paraglide/runtime.js'
 	import favicon from '#lib/assets/favicon.svg'
+	import '#lib/styles/arcade.css'
 
 	let { children } = $props()
 </script>
 
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
+
 {@render children()}
 
 <div style="display:none">
