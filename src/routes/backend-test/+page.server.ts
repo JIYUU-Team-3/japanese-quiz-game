@@ -14,7 +14,13 @@ export const load: PageServerLoad = async ({ locals }) => {
 		locals.db.select().from(sessions).orderBy(desc(sessions.startedAt)).limit(20),
 	])
 
-	return { topics, sessions_list, jlpt_levels: jlptLevels, question_formats: questionFormats, session_modes: sessionModes }
+	return {
+		topics,
+		sessions_list,
+		jlpt_levels: jlptLevels,
+		question_formats: questionFormats,
+		session_modes: sessionModes,
+	}
 }
 
 export const actions: Actions = {
