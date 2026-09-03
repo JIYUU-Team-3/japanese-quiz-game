@@ -10,12 +10,15 @@
 	},
 	"workers_dev": true,
 	"preview_urls": true,
+	// `vite dev` and `wrangler d1 ... --local` run against a SQLite file under
+	// .wrangler/state, seeded by `pnpm db:reset:local`. The binding is NOT marked
+	// `remote`, so a contributor without Cloudflare credentials can still run and
+	// play the whole game; deployed Workers bind the real database by id.
 	"d1_databases": [
 		{
 			"binding": "quizdb",
 			"database_name": "quizdb",
 			"database_id": "624a4e4b-483b-4285-81c4-ad13290ee4c6",
-			"remote": true,
 		},
 	],
 }

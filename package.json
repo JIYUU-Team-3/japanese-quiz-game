@@ -19,7 +19,11 @@
 		"db:push": "drizzle-kit push",
 		"db:generate": "drizzle-kit generate",
 		"db:migrate": "drizzle-kit migrate",
-		"db:studio": "drizzle-kit studio"
+		"db:studio": "drizzle-kit studio",
+		"db:seed:gen": "node --experimental-strip-types scripts/generate-seed.ts > drizzle/seed.sql",
+		"db:reset:local": "wrangler d1 execute quizdb --local --file=drizzle/0000_init_quiz_schema.sql && wrangler d1 execute quizdb --local --file=drizzle/0001_nullable_session_player.sql && wrangler d1 execute quizdb --local --file=drizzle/seed.sql",
+		"db:seed:local": "wrangler d1 execute quizdb --local --file=drizzle/seed.sql",
+		"db:seed:remote": "wrangler d1 execute quizdb --remote --file=drizzle/seed.sql"
 	},
 	"devDependencies": {
 		"@eslint/js": "^10.0.1",
