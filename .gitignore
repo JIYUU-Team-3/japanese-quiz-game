@@ -32,3 +32,6 @@ project.inlang/cache/
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+
+# Impeccable working directory (design review artifacts)
+.impeccable
