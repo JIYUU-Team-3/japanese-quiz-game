@@ -17,6 +17,11 @@ jobs:
         run: npm install -g pnpm && pnpm install
       - name: Install Playwright Browsers
         run: pnpm exec playwright install --with-deps
+      # The E2E suite plays the real game against the local D1 under
+      # .wrangler/state. Without this the bank is empty, both courses read
+      # OUT OF SERVICE, and every run test fails with nothing to ask.
+      - name: Migrate and seed the local database
+        run: pnpm db:reset:local
       - name: Run Playwright tests
         run: pnpm exec playwright test
       - uses: actions/upload-artifact@v4
