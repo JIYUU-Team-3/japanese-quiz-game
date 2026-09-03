@@ -17,6 +17,19 @@ export class SessionAnswersRepository extends BaseRepository {
 		return this.db.insert(sessionAnswers).values(input).returning()
 	}
 
+	/**
+	 * Writes a whole run's answers in one statement.
+	 *
+	 * A finished run has one row per question asked, and inserting them one at a
+	 * time would be that many round trips to D1 while the player waits on GAME
+	 * OVER. Callers are responsible for chunking to stay inside D1's per-statement
+	 * bound-parameter limit.
+	 */
+	create_many(input: (typeof sessionAnswers.$inferInsert)[]) {
+		if (input.length === 0) return Promise.resolve([])
+		return this.db.insert(sessionAnswers).values(input).returning()
+	}
+
 	remove(session_id: string, position: number) {
 		return this.db
 			.delete(sessionAnswers)
