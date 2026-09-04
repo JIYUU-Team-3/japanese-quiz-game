@@ -31,10 +31,31 @@ export interface ServedQuestion {
 	answer: number
 }
 
+/**
+ * A uniform integer in `[0, bound)`, drawn from the platform CSPRNG.
+ *
+ * Shuffling quiz answers is not a security decision, but `Math.random` is a
+ * weak PRNG that static analysis flags on sight (typescript:S2245) and
+ * `crypto.getRandomValues` costs nothing at this size. Draws landing in the
+ * short tail past the last whole multiple of `bound` are redrawn rather than
+ * folded down with `%`, which would leave the low indices very slightly
+ * likelier than the high ones.
+ */
+function randomBelow(bound: number): number {
+	const limit = Math.floor(0x1_0000_0000 / bound) * bound
+	const buf = new Uint32Array(1)
+	let drawn: number
+	do {
+		crypto.getRandomValues(buf)
+		drawn = buf[0]
+	} while (drawn >= limit)
+	return drawn % bound
+}
+
 function shuffle<T>(input: readonly T[]): T[] {
 	const xs = [...input]
 	for (let i = xs.length - 1; i > 0; i--) {
-		const j = Math.floor(Math.random() * (i + 1))
+		const j = randomBelow(i + 1)
 		;[xs[i], xs[j]] = [xs[j], xs[i]]
 	}
 	return xs
