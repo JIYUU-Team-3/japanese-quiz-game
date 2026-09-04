@@ -55,7 +55,7 @@ jobs:
 
       # `wrangler types` (run by `pnpm run build`) bakes the keys from `.env`
       # into worker-configuration.d.ts, so without one the regenerated file is
-      # missing them and `--check` fails. Only the key names matter, never the
+      # missing them and the build fails. Only the key names matter, never the
       # values. Removed again immediately so the placeholder values cannot reach
       # the deploy step below - that one gets its credentials from secrets.
       - name: Build
