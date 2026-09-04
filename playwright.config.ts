@@ -74,7 +74,14 @@ export default defineConfig({
 		// },
 	],
 
-	/* Serve the built app, unless we were pointed at an already-deployed URL. */
+	/*
+	 * Serve the built app, unless we were pointed at an already-deployed URL.
+	 *
+	 * `preview:ci` runs wrangler with `--local`, so D1 is the emulated database
+	 * under .wrangler/state. `tests/game-loop.spec.ts` plays a real run against
+	 * it, so seed it first with `pnpm db:reset:local` — on an empty bank both
+	 * courses read OUT OF SERVICE and the game has nothing to ask.
+	 */
 	webServer: externalBaseURL
 		? undefined
 		: {

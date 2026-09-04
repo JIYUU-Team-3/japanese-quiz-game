@@ -37,3 +37,6 @@ worker-configuration.d.ts
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+
+# Impeccable working directory (design review artifacts)
+.impeccable
