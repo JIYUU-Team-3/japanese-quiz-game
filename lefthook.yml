@@ -20,7 +20,9 @@ pre-push:
   parallel: false
   jobs:
     - name: typecheck
-      run: pnpm exec svelte-kit sync && pnpm exec svelte-check --tsconfig ./tsconfig.json
+      # `pnpm run check` rather than svelte-check directly: it runs `wrangler
+      # types` first, and worker-configuration.d.ts is generated, not committed.
+      run: pnpm run check
 
     - name: unit tests
       run: pnpm exec vitest --run
