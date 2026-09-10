@@ -16,7 +16,7 @@
 	// play the whole game; deployed Workers bind the real database by id.
 	"d1_databases": [
 		{
-			"binding": "japanese-quiz-db",
+			"binding": "quizdb",
 			"database_name": "japanese-quiz-db",
 			"database_id": "1e558c63-55c2-46b1-b580-c09470d2445e",
 		},
