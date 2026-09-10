@@ -59,7 +59,10 @@ jobs:
       # values. Removed again immediately so the placeholder values cannot reach
       # the deploy step below - that one gets its credentials from secrets.
       - name: Build
-        run: pnpm run build
+        run: |
+          cp -n .env.example .env
+          pnpm run build
+          rm -f .env
 
       - name: Deploy to Cloudflare Workers
         id: deploy
