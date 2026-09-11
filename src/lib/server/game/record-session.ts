@@ -169,7 +169,7 @@ export async function recordSession(locals: App.Locals, body: unknown): Promise<
  * values reach the database. Nothing is coerced silently into a plausible
  * default — a malformed run is rejected rather than recorded as a strange one.
  */
-function parseSubmission(body: unknown): SessionSubmission {
+export function parseSubmission(body: unknown): SessionSubmission {
 	if (typeof body !== 'object' || body === null) {
 		throw new SubmissionError(400, 'Expected a JSON object.')
 	}
