@@ -34,6 +34,9 @@ export default defineConfig({
 
 		/* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
 		trace: 'on-first-retry',
+
+		/* Run headless everywhere; this is already Playwright's default, made explicit so CI's mode isn't implicit. */
+		headless: true,
 	},
 
 	/* Configure projects for major browsers */
