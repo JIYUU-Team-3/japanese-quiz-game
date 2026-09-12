@@ -1,7 +1,22 @@
 import type { Question, Topic } from './types'
-import { TOPICS } from './mock-data.ts'
-
-export { TOPICS }
+export const TOPICS: Record<'vocab' | 'grammar', Topic> = {
+	vocab: {
+		id: 1,
+		slug: 'vocab',
+		nameEn: 'Vocabulary',
+		nameJa: '語彙',
+		minLevel: 'N4',
+		sortOrder: 1,
+	},
+	grammar: {
+		id: 2,
+		slug: 'grammar',
+		nameEn: 'Grammar',
+		nameJa: '文法',
+		minLevel: 'N4',
+		sortOrder: 2,
+	},
+}
 
 let choiceId = 0
 

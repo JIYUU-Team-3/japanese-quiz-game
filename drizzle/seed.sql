@@ -5,14 +5,12 @@
 --
 -- Re-runnable: content rows are replaced, play data is left alone.
 
-DELETE FROM session_answers;
-DELETE FROM sessions;
 DELETE FROM choices;
 DELETE FROM questions;
 DELETE FROM topics;
 
-INSERT INTO topics (id, slug, name_en, name_ja, min_level, sort_order, is_active) VALUES (1, 'vocab', 'Vocabulary', '語彙', 'N5', 1, 1);
-INSERT INTO topics (id, slug, name_en, name_ja, min_level, sort_order, is_active) VALUES (2, 'grammar', 'Grammar', '文法', 'N5', 2, 1);
+INSERT INTO topics (id, slug, name_en, name_ja, min_level, sort_order, is_active) VALUES (1, 'vocab', 'Vocabulary', '語彙', 'N4', 1, 1);
+INSERT INTO topics (id, slug, name_en, name_ja, min_level, sort_order, is_active) VALUES (2, 'grammar', 'Grammar', '文法', 'N4', 2, 1);
 
 INSERT INTO questions (id, level, topic_id, format, prompt, prompt_furigana, prompt_en, audio_url, explanation, difficulty, is_active) VALUES (1, 'N4', 2, 'multiple_choice', '「雨が降るかもしれませんから、傘を持っていきます。」', NULL, NULL, NULL, '〜かもしれません (might) correctly follows dictionary form 降る.', 1, 1);
 INSERT INTO choices (id, question_id, body, is_correct, position) VALUES (1, 1, 'True', 1, 0);
@@ -75,7 +73,6 @@ INSERT INTO choices (id, question_id, body, is_correct, position) VALUES (43, 15
 INSERT INTO choices (id, question_id, body, is_correct, position) VALUES (44, 15, 'を', 0, 1);
 INSERT INTO choices (id, question_id, body, is_correct, position) VALUES (45, 15, 'で', 0, 2);
 INSERT INTO choices (id, question_id, body, is_correct, position) VALUES (46, 15, 'へ', 0, 3);
-
 INSERT INTO questions (id, level, topic_id, format, prompt, prompt_furigana, prompt_en, audio_url, explanation, difficulty, is_active) VALUES (16, 'N3', 2, 'multiple_choice', '「彼はどんなに忙しくても、毎日日本語の勉強を続けている。」', NULL, NULL, NULL, 'どんなに〜ても correctly expresses "no matter how much / how...".', 1, 1);
 INSERT INTO choices (id, question_id, body, is_correct, position) VALUES (47, 16, 'True', 1, 0);
 INSERT INTO choices (id, question_id, body, is_correct, position) VALUES (48, 16, 'False', 0, 1);

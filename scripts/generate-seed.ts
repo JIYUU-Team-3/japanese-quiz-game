@@ -29,8 +29,6 @@ const lines: string[] = [
 	'--',
 	'-- Re-runnable: content rows are replaced, play data is left alone.',
 	'',
-	'DELETE FROM session_answers;',
-	'DELETE FROM sessions;',
 	'DELETE FROM choices;',
 	'DELETE FROM questions;',
 	'DELETE FROM topics;',
