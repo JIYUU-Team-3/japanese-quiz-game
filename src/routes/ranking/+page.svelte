@@ -196,7 +196,7 @@
 	}
 	.row {
 		display: grid;
-		grid-template-columns: 3.4em 1fr 2.6em 4em 4em 6.4em;
+		grid-template-columns: 3.2rem 1fr 2.8rem 5rem 5rem 6.2rem;
 		gap: 10px;
 		align-items: baseline;
 		text-align: start;
@@ -217,6 +217,7 @@
 	.row .solved,
 	.row .streak {
 		color: var(--dim);
+		text-align: center;
 	}
 	.row .pts {
 		text-align: end;
@@ -260,7 +261,7 @@
 
 	@media (max-width: 620px) {
 		.row {
-			grid-template-columns: 2.8em 1fr 2.4em 5.4em;
+			grid-template-columns: 2.8rem 1fr 2.4rem 5.4rem;
 		}
 		.row .solved,
 		.row .streak {
