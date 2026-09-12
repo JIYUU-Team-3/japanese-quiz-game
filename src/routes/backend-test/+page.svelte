@@ -211,7 +211,7 @@
 	pre {
 		max-height: 300px;
 		overflow: auto;
-		background: #f5f5f5;
+		background: #0a0d1a;
 		padding: 0.5rem;
 		border-radius: 4px;
 		font-size: 0.85rem;
