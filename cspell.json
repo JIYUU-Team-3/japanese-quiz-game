@@ -28,7 +28,6 @@
 		"project.inlang/cache/**",
 		"worker-configuration.d.ts",
 		"drizzle/seed.sql",
-		"drizzle/official_seed.sql",
 		"pnpm-lock.yaml",
 		"package-lock.json",
 		"*.svg",
