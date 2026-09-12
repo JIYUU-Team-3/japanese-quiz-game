@@ -1,7 +1,7 @@
 /**
  * Emits `drizzle/seed.sql` from the authored question set.
  *
- * The bank lives in `src/lib/game/mock-data.ts` as typed TypeScript rather than
+ * The bank lives in `src/lib/game/official-data.ts` as typed TypeScript rather than
  * as loose SQL, so it is checked by the same compiler as the rest of the game
  * and cannot drift out of the `Question` shape. This script is the one place
  * that turns it into rows.
@@ -14,7 +14,7 @@
  *   node --experimental-strip-types scripts/generate-seed.ts > drizzle/seed.sql
  */
 
-import { MOCK_QUESTIONS, TOPICS } from '../src/lib/game/mock-data.ts'
+import { OFFICIAL_QUESTIONS, TOPICS } from '../src/lib/game/official-data.ts'
 
 /** SQLite string literal: single quotes doubled, nothing else escaped. */
 function lit(value: string | null): string {
@@ -23,11 +23,9 @@ function lit(value: string | null): string {
 
 const lines: string[] = [
 	'-- GENERATED FILE — do not edit by hand.',
-	'-- Source: src/lib/game/mock-data.ts, via scripts/generate-seed.ts',
+	'-- Source: src/lib/game/official-data.ts, via scripts/generate-seed.ts',
 	'--',
-	'-- PLACEHOLDER CONTENT. The Japanese is correct, but this set has not been',
-	'-- reviewed against an official JLPT syllabus and must not be presented to',
-	'-- learners as authoritative study material. See PRODUCT.md.',
+	'-- Official JLPT N4 & N3 Question Set.',
 	'--',
 	'-- Re-runnable: content rows are replaced, play data is left alone.',
 	'',
@@ -46,7 +44,7 @@ for (const topic of Object.values(TOPICS)) {
 }
 lines.push('')
 
-for (const question of MOCK_QUESTIONS) {
+for (const question of OFFICIAL_QUESTIONS) {
 	lines.push(
 		'INSERT INTO questions (id, level, topic_id, format, prompt, prompt_furigana, prompt_en, ' +
 			'audio_url, explanation, difficulty, is_active) VALUES ' +

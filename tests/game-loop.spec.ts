@@ -124,7 +124,7 @@ test('the ranking filters by course on the server', async ({ page }) => {
 })
 
 test('a forged score is refused rather than recorded', async ({ request }) => {
-	// Question 13 is N3. Claiming it under N4 would put an N3 item on the N4
+	// Question 16 is N3. Claiming it under N4 would put an N3 item on the N4
 	// board, and Level is a promise.
 	const response = await request.post('/api/sessions', {
 		data: {
@@ -132,7 +132,7 @@ test('a forged score is refused rather than recorded', async ({ request }) => {
 			level: 'N4',
 			durationMs: 1000,
 			score: 999999,
-			answers: [{ questionId: 13, choiceId: 49, answerMs: 0 }],
+			answers: [{ questionId: 16, choiceId: 47, answerMs: 0 }],
 		},
 	})
 

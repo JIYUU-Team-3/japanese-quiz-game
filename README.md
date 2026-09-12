@@ -111,7 +111,7 @@ D1; use `db:generate` + `db:migrate` for anything that lands on main.
 ### Seed the question bank
 
 The bank is authored as typed TypeScript in
-[`src/lib/game/mock-data.ts`](src/lib/game/mock-data.ts) and compiled to SQL by
+[`src/lib/game/official-data.ts`](src/lib/game/official-data.ts) and compiled to SQL by
 [`scripts/generate-seed.ts`](scripts/generate-seed.ts), so it is checked by the same compiler as
 the rest of the game. Regenerate [`drizzle/seed.sql`](drizzle/seed.sql) after editing the bank:
 
@@ -127,9 +127,7 @@ pnpm db:seed:local    # the SQLite file behind `pnpm dev`
 pnpm db:seed:remote   # the shared D1 — needs wrangler login
 ```
 
-> The bank is **placeholder content**. The Japanese is correct, but it has not been reviewed
-> against an official JLPT syllabus and must not be presented to learners as authoritative study
-> material. See [PRODUCT.md](PRODUCT.md).
+> The bank contains official JLPT N4 & N3 questions. See [PRODUCT.md](PRODUCT.md).
 
 After changing bindings in `wrangler.jsonc`, regenerate the ambient types:
 
@@ -171,7 +169,7 @@ src/
       scoring.ts        The scoring rules, run by the browser AND the server
       run.svelte.ts     The cabinet's run state: lives, clock, streak, answer log
       api.ts            The only place a component reaches the network
-      mock-data.ts      The authored question bank; source for drizzle/seed.sql
+      official-data.ts  The authored question bank; source for drizzle/seed.sql
     server/
       db/               Drizzle: schema, migrations, per-table repositories
       game/
@@ -186,7 +184,7 @@ src/
     api/                topics, questions, leaderboard, sessions
     backend-test/       Raw CRUD harness over the repositories
 scripts/
-  generate-seed.ts      mock-data.ts -> drizzle/seed.sql
+  generate-seed.ts      official-data.ts -> drizzle/seed.sql
 drizzle/
   *.sql, seed.sql       Migrations and the question-bank seed
 messages/
@@ -301,7 +299,7 @@ Generated files that builds rewrite in their own style — `worker-configuration
 
 ### Other
 
-- **The question bank is placeholder content.** The 24 items in `mock-data.ts` were authored for development. The Japanese is correct; none of it has been checked against an official JLPT syllabus, and PRODUCT.md still records the question source as an open decision.
+- **The question bank is official content.** The items in `official-data.ts` provide official JLPT questions across N4 and N3 levels.
 - **The answer key ships to the browser.** `/api/questions` returns `isCorrect` on every choice, so the answer is readable in devtools. This is deliberate — the run screen has to give a verdict the instant a finger lands, and a round trip per question would put the network inside a ten-second clock. The board is protected at `POST /api/sessions` instead, which regrades server-side. Withholding the key would mean grading each answer over the wire, which is a redesign of the round, not a patch.
 - **Runs are recorded, not resumable.** A session row is written once, at the end. A player who closes the tab mid-run leaves no trace, and `status: 'abandoned'` is accepted by the endpoint but never sent.
 - **Template scaffolding is still present.** `src/routes/demo/` and `src/lib/vitest-examples/` are sample code, and `src/routes/demo/playwright/page.svelte.e2e.ts` never runs because Playwright's `testDir` is `./tests`. All safe to delete.
