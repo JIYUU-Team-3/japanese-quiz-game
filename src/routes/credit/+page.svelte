@@ -99,8 +99,8 @@
 				pos = tube.scrollTop
 			} else {
 				pos += (tube.clientHeight / CROSSING_S) * (dt / 1000)
-				// The last line has left and only the empty tail shows, which looks the
-				// same as the empty lead at the top, so the jump back cannot be seen.
+				// The last line has completely scrolled past the top and only the empty
+				// tail was visible, so loop back to 0 where the title enters from the bottom.
 				if (pos >= tube.scrollHeight - tube.clientHeight) pos = 0
 				tube.scrollTop = pos
 			}
@@ -216,28 +216,25 @@
 	}
 
 	.roll {
+		--roll-gap: clamp(48px, 9vw, 88px);
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		gap: clamp(48px, 9vw, 88px);
+		gap: var(--roll-gap);
 		padding: 0 var(--pad);
 		text-align: center;
 	}
 
 	/*
-	 * An empty tube before and after the credits. The first holds the opening
-	 * line just below the bottom edge when the page opens; the second is the blank
-	 * stretch the last line leaves behind before the roll jumps back to the first.
-	 *
-	 * The height is the tube's, measured by the script. Until it runs, the template
-	 * writes the screen's height instead: never shorter than the tube, so the
-	 * opening line still starts out of sight, and the swap happens below the
-	 * bottom edge. `100cqh` would be exact, but Chromium resolved it to zero in
-	 * this layout.
+	 * An empty spacer before and after the credits, scaled to the tube height
+	 * minus the flex gap. The first holds the opening line flush against the
+	 * bottom edge of the tube when the page opens; the second allows the last
+	 * line to climb completely off the top before the roll loops back to the
+	 * beginning.
 	 */
 	.blank {
 		flex: none;
-		height: var(--tube-height);
+		height: calc(var(--tube-height) - var(--roll-gap));
 	}
 
 	.title {
