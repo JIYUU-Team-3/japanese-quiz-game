@@ -92,9 +92,11 @@
 		<footer class="tray hud">
 			<nav>
 				<a href={resolve('/ranking')}>RANKING</a>
-				<a href={resolve('/credits')}>STAFF ROLL</a>
 			</nav>
-			<span class="credit glow-beam">CREDIT&nbsp;&nbsp;<b class="glow-gold">FREE PLAY</b></span>
+			<!-- The cabinet's CREDIT readout doubles as the way to the members roll. -->
+			<a class="credit glow-beam" href={resolve('/members')}
+				>CREDIT&nbsp;&nbsp;<b class="glow-gold">FREE PLAY</b></a
+			>
 		</footer>
 	</main>
 </div>
@@ -291,7 +293,7 @@
 		display: flex;
 		gap: 20px;
 	}
-	.tray a {
+	.tray nav a {
 		color: var(--dim);
 		text-decoration: none;
 		border-bottom: var(--rule) solid transparent;
@@ -301,6 +303,11 @@
 	.tray a:focus-visible {
 		color: var(--beam);
 		border-bottom-color: var(--blue);
+	}
+	.credit {
+		text-decoration: none;
+		border-bottom: var(--rule) solid transparent;
+		padding-bottom: 2px;
 	}
 	.credit b {
 		font-weight: inherit;

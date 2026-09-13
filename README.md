@@ -180,7 +180,7 @@ src/
     +page.svelte        Attract screen (board + demo reel, server-rendered)
     play/               SELECT COURSE, the run, GAME OVER, name entry
     ranking/            The leaderboard
-    credits/            Staff roll
+    members/            Member contributions roll, linked from CREDIT FREE PLAY on the title screen
     api/                topics, questions, leaderboard, sessions
     backend-test/       Raw CRUD harness over the repositories
 scripts/
