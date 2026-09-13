@@ -94,9 +94,11 @@
 				<a href={resolve('/ranking')}>RANKING</a>
 			</nav>
 			<!-- The cabinet's CREDIT readout doubles as the way to the members roll. -->
-			<a class="credit glow-beam" href={resolve('/members')}
-				>CREDIT&nbsp;&nbsp;<b class="glow-gold">FREE PLAY</b></a
-			>
+			<span class="credit">
+				<a class="glow-beam" href={resolve('/credit')}>CREDIT</a>&nbsp;&nbsp;<b class="glow-gold"
+					>FREE PLAY</b
+				>
+			</span>
 		</footer>
 	</main>
 </div>
@@ -304,7 +306,7 @@
 		color: var(--beam);
 		border-bottom-color: var(--blue);
 	}
-	.credit {
+	.credit a {
 		text-decoration: none;
 		border-bottom: var(--rule) solid transparent;
 		padding-bottom: 2px;

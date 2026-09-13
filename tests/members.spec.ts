@@ -16,8 +16,8 @@ test('the CREDIT readout on the title screen reaches the members roll, and TITLE
 	await page.goto('/')
 	await expect(page.getByRole('link', { name: 'ABOUT', exact: true })).toHaveCount(0)
 	await expect(page.getByRole('link', { name: 'MEMBERS', exact: true })).toHaveCount(0)
-	await page.getByRole('link', { name: /^CREDIT\s+FREE PLAY$/ }).click()
-	await expect(page).toHaveURL(/\/members$/)
+	await page.getByRole('link', { name: 'CREDIT', exact: true }).click()
+	await expect(page).toHaveURL(/\/credit$/)
 	for (const name of TEAM) {
 		await expect(page.getByRole('heading', { name, exact: true })).toBeAttached()
 	}
@@ -27,7 +27,7 @@ test('the CREDIT readout on the title screen reaches the members roll, and TITLE
 })
 
 test('each member is listed with a role and what they built', async ({ page }) => {
-	await page.goto('/members')
+	await page.goto('/credit')
 
 	const cheng = page.getByRole('region', { name: 'CHENG PORCHHENG' })
 	await expect(cheng.getByText('チェン・ポーチェン', { exact: true })).toBeAttached()
@@ -37,7 +37,7 @@ test('each member is listed with a role and what they built', async ({ page }) =
 
 test('the roll enters from the bottom of the tube and climbs', async ({ page }) => {
 	await page.emulateMedia({ reducedMotion: 'no-preference' })
-	await page.goto('/members')
+	await page.goto('/credit')
 
 	const tube = await page.locator('.tube').boundingBox()
 	const title = page.getByRole('heading', { name: /NIHONGO ATTACK/ })
@@ -52,7 +52,7 @@ test('the player can scroll the roll by hand, and it carries on by itself afterw
 	page,
 }) => {
 	await page.emulateMedia({ reducedMotion: 'no-preference' })
-	await page.goto('/members')
+	await page.goto('/credit')
 	await expect.poll(() => scrollTop(page)).toBeGreaterThan(0)
 
 	const tube = (await page.locator('.tube').boundingBox())!
@@ -72,7 +72,7 @@ test('with reduced motion the roll stands still and every name can be scrolled t
 	// emulateMedia rather than test.use({ reducedMotion }): the fixture option did
 	// not reach matchMedia in any of the three browsers.
 	await page.emulateMedia({ reducedMotion: 'reduce' })
-	await page.goto('/members')
+	await page.goto('/credit')
 
 	await page.waitForTimeout(1_000)
 	expect(await scrollTop(page)).toBe(0)
