@@ -81,6 +81,10 @@ One authored moment per surface, not scattered effects.
 - Attract: `PUSH START` blinks on a 1.06s step; the demo question cycles every 3.2s.
 - Round: the timer bar is the motion — a `scaleX` transform driven by `requestAnimationFrame`,
   turning red under three seconds. Time is never the only channel: a numeric readout runs beside it.
+- Members roll: the member contributions climb the tube, scrolled from `requestAnimationFrame` and
+  timed so any line takes 20s to cross whatever the screen height, with an empty tube before and
+  after so the loop joins without a visible jump. The player can scroll it by hand at any time; it
+  holds for 2s after the last scroll and carries on from there. Only `← TITLE` stays pinned.
 - Everything collapses under `prefers-reduced-motion: reduce`, including the demo cycle, which is
   cancelled at its source rather than merely hidden.
 
@@ -105,4 +109,5 @@ Numerals are `tabular-nums` everywhere a value changes.
 
 - No `prefers-contrast` handling.
 - The scanline overlay is a fixed opacity with no user control.
-- The staff roll is static; a real arcade roll scrolls. The motion budget went to the game.
+- The members roll has no dedicated pause control (WCAG 2.2.2). Scrolling by hand holds it for 2s,
+  reduced motion stills it, and `← TITLE` is always reachable.
