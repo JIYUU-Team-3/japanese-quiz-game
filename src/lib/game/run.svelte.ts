@@ -19,7 +19,12 @@ import {
 // off the rulebook the server also reads.
 export { QUESTION_MS, START_LIVES, MAX_MULTIPLIER }
 
-const FEEDBACK_MS = 1300
+/**
+ * Feedback now holds until the player presses NEXT, but not from the very first
+ * frame: a double tap or a mashed key would otherwise skip the verdict the
+ * pause exists to show.
+ */
+const NEXT_ARM_MS = 350
 
 export type Phase = 'select' | 'loading' | 'asking' | 'feedback' | 'over'
 
@@ -100,6 +105,8 @@ export class Run {
 	lastGain = $state(0)
 	/** True when the clock ran out rather than the player choosing wrong. */
 	timedOut = $state(false)
+	/** False for the first moments of feedback, so a stray second input can't skip it. */
+	canAdvance = $state(false)
 
 	#startedAt = 0
 	#endedAt = 0
@@ -149,6 +156,7 @@ export class Run {
 		this.lastCorrect = null
 		this.lastGain = 0
 		this.timedOut = false
+		this.canAdvance = false
 		this.#startedAt = Date.now()
 		this.#endedAt = 0
 		this.phase = 'asking'
@@ -188,8 +196,18 @@ export class Run {
 			this.lives -= 1
 		}
 
-		this.phase = 'feedback'
-		this.#feedback = setTimeout(() => this.#advance(), FEEDBACK_MS)
+		this.#hold()
+	}
+
+	/** Leaves feedback for the next question, or GAME OVER if that was the last life. */
+	next() {
+		if (this.phase !== 'feedback' || !this.canAdvance) return
+		this.#advance()
+	}
+
+	/** True when NEXT leads to GAME OVER rather than another question. */
+	get finalAnswer(): boolean {
+		return this.phase === 'feedback' && this.lives <= 0
 	}
 
 	/** Back to the coin-drop state. */
@@ -226,8 +244,21 @@ export class Run {
 		}
 	}
 
+	#hold() {
+		this.phase = 'feedback'
+		this.canAdvance = false
+		this.#feedback = setTimeout(() => {
+			this.#feedback = undefined
+			this.canAdvance = true
+		}, NEXT_ARM_MS)
+	}
+
 	#advance() {
-		this.#feedback = undefined
+		if (this.#feedback) {
+			clearTimeout(this.#feedback)
+			this.#feedback = undefined
+		}
+		this.canAdvance = false
 		this.picked = null
 		this.lastCorrect = null
 		this.timedOut = false
@@ -292,7 +323,6 @@ export class Run {
 		this.missed += 1
 		this.lives -= 1
 		this.asked += 1
-		this.phase = 'feedback'
-		this.#feedback = setTimeout(() => this.#advance(), FEEDBACK_MS)
+		this.#hold()
 	}
 }

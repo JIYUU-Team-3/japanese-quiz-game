@@ -32,7 +32,7 @@ async function answerKey(request: APIRequestContext, level: string): Promise<Map
 }
 
 /**
- * Answers the question on screen and waits out the feedback pause.
+ * Answers the question on screen, then presses NEXT to leave the feedback pause.
  *
  * The choices are reshuffled per question, so the right button is found by its
  * text at the moment of the click rather than by position.
@@ -50,6 +50,7 @@ async function answer(page: Page, key: Map<string, string>, correctly: boolean) 
 		const body = (await choices.nth(i).locator('.text').innerText()).trim()
 		if ((body === wanted) === correctly) {
 			await choices.nth(i).click()
+			await page.locator('button.next').click()
 			return
 		}
 	}

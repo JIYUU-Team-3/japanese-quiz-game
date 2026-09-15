@@ -100,6 +100,13 @@
 	}
 
 	function onKey(event: KeyboardEvent) {
+		if (run.phase === 'feedback') {
+			if (event.key === 'Enter' || event.key === ' ' || event.key === 'ArrowRight') {
+				event.preventDefault()
+				run.next()
+			}
+			return
+		}
 		if (run.phase !== 'asking' || !run.current) return
 		const key = event.key.toUpperCase()
 		const letter = 'ABCD'.indexOf(key)
@@ -231,19 +238,31 @@
 
 					<div class="verdict" aria-live="polite">
 						{#if run.phase === 'feedback'}
-							<p class="verdict-line hud" class:ok={run.lastCorrect}>
-								{#if run.lastCorrect}
-									<span class="glow-green">せいかい！</span>
-									<span class="glow-gold num">+{run.lastGain.toLocaleString()}</span>
-								{:else if run.timedOut}
-									<span class="glow-red">TIME UP</span>
-								{:else}
-									<span class="glow-red">ざんねん</span>
-								{/if}
-							</p>
-							{#if q.source.explanation}
-								<p class="verdict-gloss readable">{q.source.explanation}</p>
-							{/if}
+							<div class="verdict-row">
+								<div class="verdict-text">
+									<p class="verdict-line hud" class:ok={run.lastCorrect}>
+										{#if run.lastCorrect}
+											<span class="glow-green">せいかい！</span>
+											<span class="glow-gold num">+{run.lastGain.toLocaleString()}</span>
+										{:else if run.timedOut}
+											<span class="glow-red">TIME UP</span>
+										{:else}
+											<span class="glow-red">ざんねん</span>
+										{/if}
+									</p>
+									{#if q.source.explanation}
+										<p class="verdict-gloss readable">{q.source.explanation}</p>
+									{/if}
+								</div>
+								<button
+									class="next hud"
+									class:final={run.finalAnswer}
+									disabled={!run.canAdvance}
+									onclick={() => run.next()}
+								>
+									{run.finalAnswer ? 'RESULT' : 'NEXT'} <span class="arrow">▶</span>
+								</button>
+							</div>
 						{/if}
 					</div>
 				</div>
@@ -615,6 +634,78 @@
 		align-items: baseline;
 		font-size: clamp(1rem, 3.4vw, 1.4rem);
 		letter-spacing: 0.1em;
+	}
+	/* The verdict text and NEXT share one row inside the reserved verdict height,
+	   so nothing appears under the choice the player just tapped. The button
+	   stretches to the height of the verdict line and the gloss together. */
+	.verdict-row {
+		display: flex;
+		align-items: stretch;
+		gap: clamp(12px, 2.4vw, 20px);
+	}
+	.verdict-text {
+		flex: 1;
+		min-width: 0;
+	}
+	.verdict-text .verdict-line:last-child {
+		margin-bottom: 0;
+	}
+	.next {
+		flex: none;
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		padding: 0 clamp(14px, 2.6vw, 24px);
+		background: transparent;
+		border: var(--rule) solid var(--gold);
+		color: var(--gold);
+		font-family: var(--font-dot);
+		font-size: clamp(0.95rem, 3vw, 1.3rem);
+		letter-spacing: 0.14em;
+		text-shadow: var(--bloom) rgb(255 196 0 / 0.55);
+		box-shadow: 0 0 12px rgb(255 196 0 / 0.3);
+		cursor: pointer;
+		transition:
+			background 120ms ease-out,
+			box-shadow 120ms ease-out;
+	}
+	.next:hover:not(:disabled),
+	.next:focus-visible {
+		background: rgb(255 196 0 / 0.12);
+		box-shadow: 0 0 20px rgb(255 196 0 / 0.55);
+	}
+	.next:disabled {
+		opacity: 0.35;
+		text-shadow: none;
+		box-shadow: none;
+		cursor: default;
+	}
+	.next .arrow {
+		animation: next-blink 1.06s steps(1) infinite;
+	}
+	.next:disabled .arrow {
+		animation: none;
+	}
+	.next.final {
+		border-color: var(--red);
+		color: var(--red);
+		text-shadow: var(--bloom) rgb(255 59 20 / 0.6);
+		box-shadow: 0 0 12px rgb(255 59 20 / 0.35);
+	}
+	.next.final:hover:not(:disabled),
+	.next.final:focus-visible {
+		background: rgb(255 59 20 / 0.12);
+		box-shadow: 0 0 20px rgb(255 59 20 / 0.6);
+	}
+	@keyframes next-blink {
+		50% {
+			opacity: 0;
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.next .arrow {
+			animation: none;
+		}
 	}
 	.verdict-gloss {
 		margin: 0;
