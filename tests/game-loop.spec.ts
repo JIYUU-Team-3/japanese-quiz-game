@@ -133,7 +133,7 @@ test('a forged score is refused rather than recorded', async ({ request }) => {
 			level: 'N4',
 			durationMs: 1000,
 			score: 999999,
-			answers: [{ questionId: 16, choiceId: 47, answerMs: 0 }],
+			answers: [{ questionId: 16, choiceId: 49, answerMs: 0 }],
 		},
 	})
 
