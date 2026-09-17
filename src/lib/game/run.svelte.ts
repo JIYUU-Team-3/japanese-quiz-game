@@ -14,12 +14,43 @@ import {
 	type Question,
 	type RecordedAnswer,
 	type RecordedSession,
+	type ReviewItem,
 	type SessionSubmission,
 } from './types'
 
 // Re-exported so screens read the machine's constants off the machine and not
 // off the rulebook the server also reads.
 export { QUESTION_MS, START_LIVES, MAX_MULTIPLIER }
+
+const REVIEW_STORAGE_KEY = 'jp_quiz_review_session'
+
+export interface StoredReview {
+	history: ReviewItem[]
+	level: JlptLevel | null
+	score: number
+}
+
+export function saveReviewStorage(history: ReviewItem[], level: JlptLevel | null, score: number) {
+	if (typeof window === 'undefined' || !window.sessionStorage) return
+	try {
+		window.sessionStorage.setItem(
+			REVIEW_STORAGE_KEY,
+			JSON.stringify({ history, level, score } satisfies StoredReview),
+		)
+	} catch {
+		// Ignore storage quota or disabled errors
+	}
+}
+
+export function loadReviewStorage(): StoredReview | null {
+	if (typeof window === 'undefined' || !window.sessionStorage) return null
+	try {
+		const raw = window.sessionStorage.getItem(REVIEW_STORAGE_KEY)
+		return raw ? (JSON.parse(raw) as StoredReview) : null
+	} catch {
+		return null
+	}
+}
 
 /**
  * Feedback now holds until the player presses NEXT, but not from the very first
@@ -100,6 +131,7 @@ export class Run {
 	 * quiet for ten seconds is a fact about the run, not a gap in it.
 	 */
 	answers = $state<RecordedAnswer[]>([])
+	history = $state<ReviewItem[]>([])
 
 	/** Which choice the player committed to, held through feedback. */
 	picked = $state<number | null>(null)
@@ -154,6 +186,7 @@ export class Run {
 		this.asked = 0
 		this.index = 0
 		this.answers = []
+		this.history = []
 		this.picked = null
 		this.lastCorrect = null
 		this.lastGain = 0
@@ -169,7 +202,8 @@ export class Run {
 		if (this.phase !== 'asking' || !this.current) return
 		this.#disarm()
 
-		const correct = choice === this.current.answer
+		const served = this.current
+		const correct = choice === served.answer
 		this.picked = choice
 		this.lastCorrect = correct
 		this.timedOut = false
@@ -180,9 +214,18 @@ export class Run {
 		// the `answerMs` this same line records.
 		const spent = clampElapsed(QUESTION_MS - this.remaining)
 		this.answers.push({
-			questionId: this.current.source.id,
-			choiceId: this.current.choices[choice].id,
+			questionId: served.source.id,
+			choiceId: served.choices[choice].id,
 			answerMs: spent,
+		})
+		this.history.push({
+			question: served.source,
+			selectedChoice: served.choices[choice] ?? null,
+			correctChoice: served.choices[served.answer],
+			isCorrect: correct,
+			timedOut: false,
+			answerMs: spent,
+			roundNumber: this.asked,
 		})
 
 		if (correct) {
@@ -285,6 +328,7 @@ export class Run {
 	#finish() {
 		this.#endedAt = Date.now()
 		this.phase = 'over'
+		saveReviewStorage(this.history, this.level, this.score)
 	}
 
 	#arm() {
@@ -312,12 +356,13 @@ export class Run {
 
 	#expire() {
 		if (this.phase !== 'asking' || !this.current) return
+		const served = this.current
 		this.picked = null
 		this.lastCorrect = false
 		this.timedOut = true
 		this.lastGain = 0
 		this.answers.push({
-			questionId: this.current.source.id,
+			questionId: served.source.id,
 			choiceId: null,
 			answerMs: QUESTION_MS,
 		})
@@ -325,6 +370,15 @@ export class Run {
 		this.missed += 1
 		this.lives -= 1
 		this.asked += 1
+		this.history.push({
+			question: served.source,
+			selectedChoice: null,
+			correctChoice: served.choices[served.answer],
+			isCorrect: false,
+			timedOut: true,
+			answerMs: QUESTION_MS,
+			roundNumber: this.asked,
+		})
 		this.#hold()
 	}
 }

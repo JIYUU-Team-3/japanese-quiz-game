@@ -435,7 +435,7 @@
 				{/if}
 
 				<div class="again">
-					<button class="cta ghost hud" type="button">REVIEW</button>
+					<a class="cta ghost hud" href={resolve('/review')}>REVIEW</a>
 					<button class="cta ghost hud" onclick={resetActiveRun}>CONTINUE?</button>
 					<a class="back hud" href={resolve('/')}>← TITLE</a>
 				</div>
