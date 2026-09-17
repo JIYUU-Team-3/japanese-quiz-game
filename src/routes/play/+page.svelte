@@ -4,6 +4,7 @@
 	import { invalidateAll } from '$app/navigation'
 	import { Run, QUESTION_MS, START_LIVES } from '#lib/game/run.svelte.js'
 	import { ApiError, fetchQuestions, placementFor, submitSession } from '#lib/game/api.js'
+	import { playMiss, releaseAudio, unlockAudio } from '#lib/game/sound.js'
 	import {
 		NAME_CHARS,
 		NAME_MAX,
@@ -18,6 +19,44 @@
 
 	const run = new Run()
 	const LIFE_SLOTS = Array.from({ length: START_LIVES }, (_unused, i) => i)
+
+	/**
+	 * How long the ✕ is up: two stamps, ブッ then ブー, ending on the frame the
+	 * buzzer does. Must match `NOTES` in `#lib/game/sound.js` and the `miss-stamp`
+	 * keyframes in the stylesheet.
+	 */
+	const MISS_MS = 720
+
+	/**
+	 * A token for the ✕ currently on screen, or null. A counter rather than a
+	 * boolean so that keying on it restarts the stamp cleanly if two misses ever
+	 * land inside one cue. Decorative: never announced — the verdict line
+	 * already says ざんねん or TIME UP.
+	 */
+	let miss = $state<number | null>(null)
+	let missTimer: ReturnType<typeof setTimeout> | undefined
+	let misses = 0
+	// Held outside the reactive graph on purpose: it is the previous frame's
+	// value, which is the one thing a rune must not re-read.
+	let prevLives = START_LIVES
+
+	// Every miss costs a life — a wrong pick and a timeout alike — so a life going
+	// is the one signal that covers both. The cue outlives the feedback pause
+	// (NEXT arms at 350ms), so it is timed off the miss itself and not off the
+	// phase it happened in. The timer is also what clears the ✕ under reduced
+	// motion, where the stamps that would otherwise end it are collapsed away.
+	$effect(() => {
+		const left = run.lives
+		if (left < prevLives) {
+			miss = ++misses
+			// Same frame as the ✕ mounts. Both clocks start here and neither waits
+			// on JavaScript again, which is the only reason they stay together.
+			playMiss()
+			clearTimeout(missTimer)
+			missTimer = setTimeout(() => (miss = null), MISS_MS)
+		}
+		prevLives = left
+	})
 
 	// The board arrives with the document; once a run is recorded, the table the
 	// server hands back takes over, so HI-SCORE is never a guess.
@@ -37,9 +76,19 @@
 	// network. The rank finally shown is the one the server sends back.
 	const placement = $derived(run.phase === 'over' ? placementFor(run.score, table) : null)
 
-	onDestroy(() => run.stop())
+	onDestroy(() => {
+		run.stop()
+		clearTimeout(missTimer)
+		releaseAudio()
+	})
 
 	async function begin(level: JlptLevel) {
+		// The one gesture every run is guaranteed to have. A life can be lost with
+		// no gesture near it — the clock running out is the machine acting, not the
+		// player — so the hardware is opened here and is still open when it is.
+		unlockAudio()
+		clearTimeout(missTimer)
+		miss = null
 		recorded = null
 		name = ''
 		loadError = null
@@ -119,11 +168,47 @@
 	}
 </script>
 
+<!-- The life mark: a 3×3 dot-matrix cross, authored as geometry so it carries
+     the tube's bloom the way a glyph or an emoji never could. -->
+{#snippet lifeMark(state: '' | 'spent')}
+	<svg class="mark {state}" viewBox="0 0 3 3" aria-hidden="true">
+		<rect x="1" y="0" width="1" height="1" />
+		<rect x="0" y="1" width="3" height="1" />
+		<rect x="1" y="2" width="1" height="1" />
+	</svg>
+{/snippet}
+
+<!-- The batsu: a 7×7 dot-matrix ✕, authored as geometry like the life mark so
+     it takes the tube's bloom and scanlines. Strokes two cells thick, because a
+     one-cell diagonal at this resolution reads as a staircase and not a mark. -->
+{#snippet batsu()}
+	<svg class="batsu" viewBox="0 0 7 7" aria-hidden="true">
+		<rect x="0" y="0" width="2" height="1" /><rect x="5" y="0" width="2" height="1" />
+		<rect x="0" y="1" width="3" height="1" /><rect x="4" y="1" width="3" height="1" />
+		<rect x="1" y="2" width="5" height="1" />
+		<rect x="2" y="3" width="3" height="1" />
+		<rect x="1" y="4" width="5" height="1" />
+		<rect x="0" y="5" width="3" height="1" /><rect x="4" y="5" width="3" height="1" />
+		<rect x="0" y="6" width="2" height="1" /><rect x="5" y="6" width="2" height="1" />
+	</svg>
+{/snippet}
+
 <svelte:head><title>PLAY — 日本語アタック</title></svelte:head>
 <svelte:window onkeydown={onKey} />
 
 <div class="cabinet">
 	<main class="screen play">
+		<!-- A miss, stamped where the player is looking: centre-tube, over the
+		     round, under the scanlines. Takes no layout and no pointer, so the
+		     verdict underneath never moves and NEXT stays hittable through it. -->
+		{#if miss !== null}
+			{#key miss}
+				<div class="miss" aria-hidden="true">
+					<span class="miss-pop">{@render batsu()}</span>
+				</div>
+			{/key}
+		{/if}
+
 		<!-- HUD is present in every phase so the machine never loses its frame. -->
 		<header class="hud-bar hud">
 			<span class="slot">
@@ -137,12 +222,10 @@
 			<span class="slot lives" aria-label="{run.lives} of {START_LIVES} lives remaining">
 				<b class="glow-beam">REST</b>
 				<span class="marks">
+					<!-- The counter tells the truth on the same frame the life is gone.
+					     The burn-out is not here; it is centre-tube, where the eye is. -->
 					{#each LIFE_SLOTS as i (i)}
-						<svg class="mark" class:spent={i >= run.lives} viewBox="0 0 3 3" aria-hidden="true">
-							<rect x="1" y="0" width="1" height="1" />
-							<rect x="0" y="1" width="3" height="1" />
-							<rect x="1" y="2" width="1" height="1" />
-						</svg>
+						{@render lifeMark(i >= run.lives ? 'spent' : '')}
 					{/each}
 				</span>
 			</span>
@@ -411,6 +494,116 @@
 	.mark.spent {
 		fill: #2a3050;
 		filter: none;
+	}
+
+	/* ── A miss ─────────────────────────────────────────────────────────────
+	 * The quiz-show ✕, stamped twice in time with ブッブー: a short hit on ブッ,
+	 * dark for the gap, a heavier hit held through ブー, gone when the buzzer is.
+	 * The second stamp lands bigger because the second note is the verdict.
+	 *
+	 *   0–140ms    lit   ブッ
+	 *   140–220ms  dark
+	 *   220–720ms  lit   ブー
+	 *
+	 * Red, because red threatens: wrong answer is one of its four named jobs.
+	 *
+	 * ⚠ Every stop below is also a note in `NOTES` in `#lib/game/sound.js`.
+	 * Picture and sound are one event on two clocks, and they only read as one
+	 * because the numbers agree — move a stop here without moving its note there
+	 * and the buzz slides off the stamp.
+	 * -------------------------------------------------------------------- */
+	.miss {
+		position: absolute;
+		inset: 0;
+		/* Under .screen::after (z-index 9): the scanlines rake across this too,
+		   because it is on the tube and not in front of it. */
+		z-index: 8;
+		display: grid;
+		place-items: center;
+		pointer-events: none;
+	}
+
+	/* Two elements because the two motions disagree: the stamp's scale wants
+	   easing and its lighting must not have any. Nesting lets each keep its own. */
+	.miss-pop {
+		display: block;
+		animation: miss-pop 720ms linear both;
+	}
+	.batsu {
+		display: block;
+		width: clamp(120px, 34vw, 220px);
+		height: clamp(120px, 34vw, 220px);
+		fill: var(--red);
+		filter: drop-shadow(0 0 28px rgb(255 59 20 / 0.9));
+		animation: miss-stamp 720ms steps(1, end) forwards;
+	}
+
+	/* Two pops. The reset to small happens mid-gap, while the ✕ is dark, so the
+	   player only ever sees it slam in — never shrink. */
+	@keyframes miss-pop {
+		0% {
+			transform: scale(0.55);
+			animation-timing-function: cubic-bezier(0.2, 0.9, 0.4, 1);
+		}
+		7% {
+			transform: scale(1.06);
+			animation-timing-function: ease-out;
+		}
+		13% {
+			transform: scale(1);
+		}
+		25% {
+			transform: scale(1);
+			animation-timing-function: steps(1, end);
+		}
+		26% {
+			transform: scale(0.55);
+		}
+		30.555% {
+			transform: scale(0.55);
+			animation-timing-function: cubic-bezier(0.2, 0.9, 0.4, 1);
+		}
+		38% {
+			transform: scale(1.14);
+			animation-timing-function: ease-out;
+		}
+		46% {
+			transform: scale(1.08);
+		}
+		100% {
+			transform: scale(1.08);
+		}
+	}
+
+	@keyframes miss-stamp {
+		/* ブッ */
+		0% {
+			opacity: 1;
+		}
+		19.444% {
+			opacity: 0;
+		}
+		/* ブー */
+		30.555% {
+			opacity: 1;
+		}
+		100% {
+			opacity: 0;
+		}
+	}
+
+	/* Reduced motion must still show the miss, not skip it. The global rule
+	   collapses every duration, which would flash this out in a frame — so the
+	   ✕ is held lit and still instead, and the same script timer that ends the
+	   buzzer takes it away. Appears and disappears; simply never moves. */
+	@media (prefers-reduced-motion: reduce) {
+		.miss-pop {
+			animation: none;
+		}
+		.batsu {
+			animation: none;
+			opacity: 0.85;
+		}
 	}
 
 	/* ── Course select ── */
