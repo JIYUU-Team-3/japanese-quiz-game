@@ -45,7 +45,7 @@
 				<span class="title-en glow-beam">NIHONGO ATTACK</span>
 			</h1>
 
-			<p class="tagline readable">語彙と文法。１問１０秒。ミス３回で終了。</p>
+			<p class="tagline readable glow-beam">語彙と文法。１問１０秒。ミス３回で終了。</p>
 
 			<a class="start hud" href={resolve('/play')}>
 				<span class="blink">PUSH START</span>
@@ -91,7 +91,7 @@
 
 		<footer class="tray hud">
 			<nav>
-				<a href={resolve('/ranking')}>RANKING</a>
+				<a class="glow-beam" href={resolve('/ranking')}>RANKING</a>
 			</nav>
 			<!-- The cabinet's CREDIT readout doubles as the way to the members roll. -->
 			<span class="credit">
@@ -295,8 +295,11 @@
 		display: flex;
 		gap: 20px;
 	}
+	.tray a,
+	.credit b {
+		text-shadow: var(--bloom) currentColor;
+	}
 	.tray nav a {
-		color: var(--dim);
 		text-decoration: none;
 		border-bottom: var(--rule) solid transparent;
 		padding-bottom: 2px;
