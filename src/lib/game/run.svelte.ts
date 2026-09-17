@@ -10,8 +10,10 @@ import {
 	SESSION_MODE,
 	type Choice,
 	type JlptLevel,
+	type LeaderboardRow,
 	type Question,
 	type RecordedAnswer,
+	type RecordedSession,
 	type SessionSubmission,
 } from './types'
 
@@ -325,4 +327,25 @@ export class Run {
 		this.asked += 1
 		this.#hold()
 	}
+}
+
+export interface ActiveRunState {
+	run: Run
+	recorded: RecordedSession | null
+	posted: LeaderboardRow[] | null
+	name: string
+}
+
+export const activeRunState = $state<ActiveRunState>({
+	run: new Run(),
+	recorded: null,
+	posted: null,
+	name: '',
+})
+
+export function resetActiveRun() {
+	activeRunState.run.reset()
+	activeRunState.recorded = null
+	activeRunState.posted = null
+	activeRunState.name = ''
 }

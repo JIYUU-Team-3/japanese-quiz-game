@@ -1,12 +1,14 @@
 <script lang="ts">
 	import { resolve } from '$app/paths'
 	import { ApiError, fetchLeaderboard } from '#lib/game/api.js'
+	import { resetActiveRun } from '#lib/game/run.svelte.js'
 	import {
 		PLAYABLE_LEVELS,
 		TABLE_SIZE,
 		type JlptLevel,
 		type LeaderboardRow,
 	} from '#lib/game/types.js'
+
 	import type { PageData } from './$types'
 
 	let { data }: { data: PageData } = $props()
@@ -48,6 +50,14 @@
 			if (filter === next) pending = false
 		}
 	}
+
+	function goBack() {
+		if (typeof window !== 'undefined' && window.history.length > 1) {
+			window.history.back()
+		} else {
+			window.location.href = resolve('/play')
+		}
+	}
 </script>
 
 <svelte:head><title>RANKING — 日本語アタック</title></svelte:head>
@@ -55,7 +65,9 @@
 <div class="cabinet">
 	<main class="screen ranking">
 		<header class="bar hud">
-			<a class="back" href={resolve('/')}>← TITLE</a>
+			<button class="back-btn hud" type="button" onclick={goBack} aria-label="Previous screen"
+				>←</button
+			>
 			<span class="glow-beam">TOP {TABLE_SIZE}</span>
 		</header>
 
@@ -83,7 +95,7 @@
 					<p class="readable">
 						{filter === 'ALL' ? 'まだ記録がありません。' : `${filter}のスコアはまだありません。`}
 					</p>
-					<a class="cta hud" href={resolve('/play')}>PUSH START</a>
+					<a class="cta hud" href={resolve('/play')} onclick={resetActiveRun}>PUSH START</a>
 				</div>
 			{:else}
 				<ol class="table hud">
@@ -107,7 +119,7 @@
 					{/each}
 				</ol>
 
-				<a class="cta hud" href={resolve('/play')}>PUSH START</a>
+				<a class="cta hud" href={resolve('/play')} onclick={resetActiveRun}>PUSH START</a>
 			{/if}
 		</div>
 	</main>
@@ -116,6 +128,7 @@
 <style>
 	.ranking {
 		--pad: clamp(16px, 3.4vw, 40px);
+		height: min(760px, calc(100dvh - 56px));
 	}
 	.num {
 		font-variant-numeric: tabular-nums;
@@ -129,35 +142,54 @@
 		border-bottom: var(--rule) solid #1c2340;
 		font-size: clamp(10px, 1.5vw, 12px);
 		letter-spacing: 0.16em;
+		flex-shrink: 0;
 	}
-	.back {
+	.back-btn {
+		background: transparent;
+		border: none;
+		padding: 4px 8px;
 		color: var(--dim);
-		text-decoration: none;
+		font-family: inherit;
+		font-size: clamp(14px, 2vw, 18px);
+		line-height: 1;
+		cursor: pointer;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		transition: color 120ms ease-out;
 	}
-	.back:hover,
-	.back:focus-visible {
+	.back-btn:hover,
+	.back-btn:focus-visible {
 		color: var(--beam);
 	}
 
 	.body {
+		--y-pad: clamp(24px, 3.8vh, 36px);
 		flex: 1;
+		min-height: 0;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		gap: 16px;
-		padding: clamp(26px, 5vw, 52px) var(--pad);
+		justify-content: flex-start;
+		gap: clamp(8px, 1.4vh, 14px);
+		padding: var(--y-pad) var(--pad) calc(var(--y-pad) + 12px);
 		text-align: center;
+		overflow-y: auto;
+		scrollbar-width: thin;
+		scrollbar-color: var(--blue) transparent;
 	}
+
 	.head {
 		margin: 0;
-		font-size: clamp(1.6rem, 6vw, 2.6rem);
+		font-size: clamp(1.4rem, 4.5vw, 2.2rem);
 		letter-spacing: 0.24em;
 		text-indent: 0.24em;
+		line-height: 1.1;
 	}
 	.sub {
 		margin: 0;
 		color: var(--dim);
-		font-size: 0.88rem;
+		font-size: 0.82rem;
 	}
 
 	.filters {
@@ -165,12 +197,12 @@
 		gap: 8px;
 	}
 	.filter {
-		padding: 7px 18px;
+		padding: 6px 16px;
 		background: transparent;
 		border: var(--rule) solid #263053;
 		color: var(--dim);
 		font-family: var(--font-dot);
-		font-size: 12px;
+		font-size: 11px;
 		letter-spacing: 0.16em;
 		cursor: pointer;
 	}
@@ -187,12 +219,12 @@
 
 	.table {
 		list-style: none;
-		margin: 8px 0 0;
+		margin: 0;
 		padding: 0;
 		width: min(760px, 100%);
 		display: grid;
-		gap: 4px;
-		font-size: clamp(0.72rem, 2.1vw, 0.92rem);
+		gap: 3px;
+		font-size: clamp(0.7rem, 1.8vh, 0.88rem);
 	}
 	.row {
 		display: grid;
@@ -200,7 +232,7 @@
 		gap: 10px;
 		align-items: baseline;
 		text-align: start;
-		padding: 7px 10px;
+		padding: 4px 10px;
 		border: var(--rule) solid transparent;
 	}
 	.header-row {
@@ -208,7 +240,9 @@
 		font-size: 10px;
 		letter-spacing: 0.14em;
 		border-bottom-color: #1c2340;
+		padding-bottom: 3px;
 	}
+
 	.row.top {
 		border-color: var(--gold);
 		background: rgb(255 196 0 / 0.07);
@@ -238,11 +272,12 @@
 	}
 
 	.cta {
-		margin-top: 8px;
+		margin-top: auto;
 		background: transparent;
 		font-family: var(--font-dot);
 		cursor: pointer;
 		padding: 12px 26px;
+
 		border: var(--rule) solid var(--gold);
 		color: var(--gold);
 		text-decoration: none;
