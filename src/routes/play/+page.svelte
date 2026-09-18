@@ -4,14 +4,7 @@
 	import { invalidateAll } from '$app/navigation'
 	import { activeRunState, resetActiveRun, QUESTION_MS, START_LIVES } from '#lib/game/run.svelte.js'
 	import { ApiError, fetchQuestions, placementFor, submitSession } from '#lib/game/api.js'
-	import {
-		MISS_CUE_MS,
-		play,
-		releaseAudio,
-		startMusic,
-		stopMusic,
-		unlockAudio,
-	} from '#lib/game/sound.svelte.js'
+	import { MISS_CUE_MS, play, unlockAudio } from '#lib/game/sound.svelte.js'
 	import { NAME_CHARS, NAME_MAX, PLAYABLE_LEVELS, type JlptLevel } from '#lib/game/types.js'
 	import type { PageData } from './$types'
 
@@ -76,14 +69,12 @@
 		prevAsked = done
 	})
 
-	// GAME OVER gets its own cue, and the music stops for it: the machine should
-	// go quiet under the score the player is about to put their name on.
+	// GAME OVER gets its own cue. The music that drops away under it is the
+	// layout's doing, not this screen's — it owns the music level for every
+	// route, and reads the run's phase to know this one.
 	$effect(() => {
 		const phase = run.phase
-		if (phase === 'over' && prevPhase !== 'over') {
-			stopMusic()
-			play('over')
-		}
+		if (phase === 'over' && prevPhase !== 'over') play('over')
 		prevPhase = phase
 	})
 
@@ -105,7 +96,6 @@
 	onDestroy(() => {
 		run.stop()
 		clearTimeout(missTimer)
-		releaseAudio()
 	})
 
 	async function begin(level: JlptLevel) {
@@ -130,9 +120,6 @@
 				return
 			}
 			run.start(level, questions)
-			// After the fetch, so the coin-drop cue has the loading beat to itself
-			// and the loop comes up under the first question rather than over it.
-			startMusic()
 		} catch (cause) {
 			loadError = cause instanceof ApiError ? cause.message : 'COULD NOT LOAD QUESTIONS'
 			resetActiveRun()

@@ -52,10 +52,22 @@ export const MISS_CUE_MS = 740
 const MASTER = 0.9
 
 /**
- * Music sits far under the cues on purpose: it is the room the game is played
- * in, and it must never compete with the verdict on an answer.
+ * Where the music stands on each screen.
+ *
+ * The title screen is what the loop was written for — nothing competes with it
+ * there, so it plays at its own level. During a run it drops to a bed: the
+ * player is reading a prompt against a ten-second clock, and music that can be
+ * attended to is music in the way. Everywhere else the cabinet is quiet.
+ *
+ * All three sit far under the cues, which must always cut through.
  */
-const MUSIC_GAIN = 0.22
+export type MusicLevel = 'title' | 'play' | 'off'
+
+const MUSIC_LEVELS: Readonly<Record<MusicLevel, number>> = {
+	title: 0.22,
+	play: 0.08,
+	off: 0,
+}
 
 const MUTE_KEY = 'nihongo-attack:muted'
 
@@ -73,7 +85,7 @@ const buffers: Partial<Record<Cue, AudioBuffer>> = {}
 let loading: Promise<void> | null = null
 
 let music: HTMLAudioElement | null = null
-let musicWanted = false
+let musicLevel: MusicLevel = 'off'
 
 function storedMute(): boolean {
 	if (typeof localStorage === 'undefined') return false
@@ -171,8 +183,8 @@ export function unlockAudio(): void {
 	if (!audio) return
 	if (audio.state === 'suspended') void audio.resume()
 	void load(audio)
-	// A press before the first gesture leaves `musicWanted` set with nothing
-	// playing; this is where that debt is paid.
+	// A cold load leaves the title screen's music level set with nothing playing,
+	// because the browser refused it; this is where that debt is paid.
 	applyMusic()
 }
 
@@ -205,49 +217,40 @@ export function play(cue: Cue): void {
 
 function applyMusic(): void {
 	if (!music) return
-	music.volume = mutedState ? 0 : MUSIC_GAIN
-	if (musicWanted && !mutedState) {
-		// A rejected play() means the gesture has not happened yet. `musicWanted`
-		// stays true, and `unlockAudio` will come back through here.
+	const wanted = musicLevel !== 'off' && !mutedState
+	music.volume = wanted ? MUSIC_LEVELS[musicLevel] : 0
+	if (wanted) {
+		// A rejected play() means the first gesture has not happened yet — which
+		// is the normal state of the title screen on a cold load, since that is
+		// the screen a visitor lands on. `musicLevel` stays set, and `unlockAudio`
+		// comes back through here on the first press.
 		void music.play().catch(() => undefined)
 	} else {
+		// Paused where it stands, never rewound. Crossing to the ranking and back
+		// should feel like stepping out of the room, not like restarting the tape.
 		music.pause()
 	}
 }
 
 /**
- * Starts the loop under the play screen.
+ * Says where the music should stand. Idempotent, so a screen can assert its own
+ * level as often as it likes.
  *
  * The music is an `<audio>` element rather than a buffer in the graph above:
  * it is 50 seconds long, and decoding it to PCM would cost ~19MB of memory to
- * play back something that needs no scheduling and never overlaps itself.
+ * play back something that needs no scheduling and never overlaps itself. It
+ * also means moving between screens is a volume change on one running element
+ * rather than a stop and a start, so the loop never restarts mid-navigation.
  */
-export function startMusic(): void {
+export function setMusic(level: MusicLevel): void {
 	if (typeof Audio !== 'function') return
-	musicWanted = true
+	if (level === musicLevel && music) return
+	musicLevel = level
 	if (!music) {
+		if (level === 'off') return
 		music = new Audio('/sfx/bgm.mp3')
 		music.loop = true
 		music.preload = 'auto'
 	}
 	applyMusic()
-}
-
-/** Stops the loop and rewinds it, so the next run opens on the same bar. */
-export function stopMusic(): void {
-	musicWanted = false
-	if (!music) return
-	music.pause()
-	music.currentTime = 0
-}
-
-/**
- * Silences the cabinet when the play screen goes away.
- *
- * The `AudioContext` deliberately stays open. Closing it would throw away every
- * decoded cue and the next run would have to fetch and decode them again — and
- * the first press after that would land on silence.
- */
-export function releaseAudio(): void {
-	stopMusic()
 }
