@@ -167,6 +167,10 @@
 					</section>
 				{/each}
 
+				<section class="closing" aria-label="Closing message">
+					<p class="thanks-ja hud glow-gold">ありがとうございます！</p>
+				</section>
+
 				<div class="blank" aria-hidden="true"></div>
 			</div>
 		</div>
@@ -296,6 +300,17 @@
 		color: var(--dim);
 		font-size: clamp(0.8rem, 2.3vw, 0.92rem);
 		line-height: 1.6;
+	}
+
+	.closing {
+		display: grid;
+		gap: 8px;
+		margin-top: 12px;
+	}
+	.thanks-ja {
+		margin: 0;
+		font-size: clamp(1.6rem, 5.5vw, 2.4rem);
+		letter-spacing: 0.12em;
 	}
 
 	/*
