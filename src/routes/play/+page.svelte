@@ -4,7 +4,14 @@
 	import { invalidateAll } from '$app/navigation'
 	import { Run, QUESTION_MS, START_LIVES } from '#lib/game/run.svelte.js'
 	import { ApiError, fetchQuestions, placementFor, submitSession } from '#lib/game/api.js'
-	import { playMiss, releaseAudio, unlockAudio } from '#lib/game/sound.js'
+	import {
+		MISS_CUE_MS,
+		play,
+		releaseAudio,
+		startMusic,
+		stopMusic,
+		unlockAudio,
+	} from '#lib/game/sound.svelte.js'
 	import {
 		NAME_CHARS,
 		NAME_MAX,
@@ -21,11 +28,12 @@
 	const LIFE_SLOTS = Array.from({ length: START_LIVES }, (_unused, i) => i)
 
 	/**
-	 * How long the ✕ is up: two stamps, ブッ then ブー, ending on the frame the
-	 * buzzer does. Must match `NOTES` in `#lib/game/sound.js` and the `miss-stamp`
-	 * keyframes in the stylesheet.
+	 * How long the ✕ is up: one stamp, held through the buzzer's decay and gone
+	 * on the frame it goes quiet. Owned by `#lib/game/sound.svelte.js`, because
+	 * the buzzer is a recording now and only the file knows how long it rings.
+	 * The `miss-stamp` keyframes in the stylesheet are the same span.
 	 */
-	const MISS_MS = 720
+	const MISS_MS = MISS_CUE_MS
 
 	/**
 	 * A token for the ✕ currently on screen, or null. A counter rather than a
@@ -36,26 +44,47 @@
 	let miss = $state<number | null>(null)
 	let missTimer: ReturnType<typeof setTimeout> | undefined
 	let misses = 0
-	// Held outside the reactive graph on purpose: it is the previous frame's
-	// value, which is the one thing a rune must not re-read.
-	let prevLives = START_LIVES
+	// Held outside the reactive graph on purpose: these are the previous frame's
+	// values, which are the one thing a rune must not re-read.
+	let prevAsked = 0
+	let prevPhase: typeof run.phase = 'select'
 
-	// Every miss costs a life — a wrong pick and a timeout alike — so a life going
-	// is the one signal that covers both. The cue outlives the feedback pause
-	// (NEXT arms at 350ms), so it is timed off the miss itself and not off the
-	// phase it happened in. The timer is also what clears the ✕ under reduced
-	// motion, where the stamps that would otherwise end it are collapsed away.
+	// The verdict, in sound. `asked` is the one counter that ticks for both ways
+	// a question can end — a pick and a timeout — so watching it covers both
+	// where watching `lives` would miss every correct answer. The miss cue
+	// outlives the feedback pause (NEXT arms at 350ms), so the ✕ is timed off the
+	// miss itself and not off the phase it happened in. That timer is also what
+	// clears the ✕ under reduced motion, where the stamp that would otherwise end
+	// it is collapsed away.
 	$effect(() => {
-		const left = run.lives
-		if (left < prevLives) {
-			miss = ++misses
-			// Same frame as the ✕ mounts. Both clocks start here and neither waits
-			// on JavaScript again, which is the only reason they stay together.
-			playMiss()
-			clearTimeout(missTimer)
-			missTimer = setTimeout(() => (miss = null), MISS_MS)
+		const done = run.asked
+		// Not `>`: CONTINUE? starts a fresh run and `asked` drops back to zero, so
+		// a rising edge would swallow the first verdict of every run after the
+		// first. Any change to a non-zero count is a question that just ended.
+		if (done !== prevAsked && done > 0) {
+			if (run.lastCorrect) {
+				play('correct')
+			} else {
+				miss = ++misses
+				// Same frame as the ✕ mounts. Both clocks start here and neither
+				// waits on JavaScript again, which is why they stay together.
+				play('miss')
+				clearTimeout(missTimer)
+				missTimer = setTimeout(() => (miss = null), MISS_MS)
+			}
 		}
-		prevLives = left
+		prevAsked = done
+	})
+
+	// GAME OVER gets its own cue, and the music stops for it: the machine should
+	// go quiet under the score the player is about to put their name on.
+	$effect(() => {
+		const phase = run.phase
+		if (phase === 'over' && prevPhase !== 'over') {
+			stopMusic()
+			play('over')
+		}
+		prevPhase = phase
 	})
 
 	// The board arrives with the document; once a run is recorded, the table the
@@ -87,6 +116,7 @@
 		// no gesture near it — the clock running out is the machine acting, not the
 		// player — so the hardware is opened here and is still open when it is.
 		unlockAudio()
+		play('start')
 		clearTimeout(missTimer)
 		miss = null
 		recorded = null
@@ -103,6 +133,9 @@
 				return
 			}
 			run.start(level, questions)
+			// After the fetch, so the coin-drop cue has the loading beat to itself
+			// and the loop comes up under the first question rather than over it.
+			startMusic()
 		} catch (cause) {
 			loadError = cause instanceof ApiError ? cause.message : 'COULD NOT LOAD QUESTIONS'
 			run.reset()
@@ -497,20 +530,22 @@
 	}
 
 	/* ── A miss ─────────────────────────────────────────────────────────────
-	 * The quiz-show ✕, stamped twice in time with ブッブー: a short hit on ブッ,
-	 * dark for the gap, a heavier hit held through ブー, gone when the buzzer is.
-	 * The second stamp lands bigger because the second note is the verdict.
+	 * The quiz-show ✕, stamped once in time with the buzzer. The buzzer is a
+	 * recording — one hit that decays away rather than two held notes — so the
+	 * mark slams in on the attack, holds while the hit is loud, and dies out
+	 * with the tail:
 	 *
-	 *   0–140ms    lit   ブッ
-	 *   140–220ms  dark
-	 *   220–720ms  lit   ブー
+	 *   0–70ms     slam in, overshoot
+	 *   70–400ms   held full
+	 *   400–740ms  fading, with the decay
 	 *
 	 * Red, because red threatens: wrong answer is one of its four named jobs.
 	 *
-	 * ⚠ Every stop below is also a note in `NOTES` in `#lib/game/sound.js`.
-	 * Picture and sound are one event on two clocks, and they only read as one
-	 * because the numbers agree — move a stop here without moving its note there
-	 * and the buzz slides off the stamp.
+	 * ⚠ 740ms is `MISS_CUE_MS` in `#lib/game/sound.svelte.js`, measured off the
+	 * audible span of `incorrect.mp3` — the file itself runs a second longer
+	 * into silence. Picture and sound are one event on two clocks, and they only
+	 * read as one because the numbers agree. Swap the file and remeasure, or the
+	 * stamp will sit there over a dead speaker.
 	 * -------------------------------------------------------------------- */
 	.miss {
 		position: absolute;
@@ -527,7 +562,7 @@
 	   easing and its lighting must not have any. Nesting lets each keep its own. */
 	.miss-pop {
 		display: block;
-		animation: miss-pop 720ms linear both;
+		animation: miss-pop 740ms linear both;
 	}
 	.batsu {
 		display: block;
@@ -535,57 +570,38 @@
 		height: clamp(120px, 34vw, 220px);
 		fill: var(--red);
 		filter: drop-shadow(0 0 28px rgb(255 59 20 / 0.9));
-		animation: miss-stamp 720ms steps(1, end) forwards;
+		animation: miss-stamp 740ms linear forwards;
 	}
 
-	/* Two pops. The reset to small happens mid-gap, while the ✕ is dark, so the
-	   player only ever sees it slam in — never shrink. */
+	/* One pop, on the attack. It overshoots and settles slightly large, so the ✕
+	   is still growing into the frame while the buzzer is at its loudest. */
 	@keyframes miss-pop {
 		0% {
 			transform: scale(0.55);
 			animation-timing-function: cubic-bezier(0.2, 0.9, 0.4, 1);
 		}
-		7% {
+		9.5% {
+			transform: scale(1.16);
+			animation-timing-function: ease-out;
+		}
+		22% {
 			transform: scale(1.06);
-			animation-timing-function: ease-out;
-		}
-		13% {
-			transform: scale(1);
-		}
-		25% {
-			transform: scale(1);
-			animation-timing-function: steps(1, end);
-		}
-		26% {
-			transform: scale(0.55);
-		}
-		30.555% {
-			transform: scale(0.55);
-			animation-timing-function: cubic-bezier(0.2, 0.9, 0.4, 1);
-		}
-		38% {
-			transform: scale(1.14);
-			animation-timing-function: ease-out;
-		}
-		46% {
-			transform: scale(1.08);
 		}
 		100% {
-			transform: scale(1.08);
+			transform: scale(1.06);
 		}
 	}
 
+	/* Lighting tracks the sample's envelope: full while the hit is loud, then
+	   down with its tail. Not `steps()` any more — the buzzer no longer switches
+	   off, it rings out, and a hard cut would leave the ✕ ahead of the sound. */
 	@keyframes miss-stamp {
-		/* ブッ */
 		0% {
 			opacity: 1;
 		}
-		19.444% {
-			opacity: 0;
-		}
-		/* ブー */
-		30.555% {
+		54% {
 			opacity: 1;
+			animation-timing-function: ease-in;
 		}
 		100% {
 			opacity: 0;
@@ -594,8 +610,8 @@
 
 	/* Reduced motion must still show the miss, not skip it. The global rule
 	   collapses every duration, which would flash this out in a frame — so the
-	   ✕ is held lit and still instead, and the same script timer that ends the
-	   buzzer takes it away. Appears and disappears; simply never moves. */
+	   ✕ is held lit and still instead, and the same script timer that is set to
+	   the buzzer's length takes it away. Appears and disappears; never moves. */
 	@media (prefers-reduced-motion: reduce) {
 		.miss-pop {
 			animation: none;
