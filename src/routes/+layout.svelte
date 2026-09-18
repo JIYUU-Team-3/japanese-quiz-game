@@ -39,7 +39,8 @@
 	 *
 	 * Here rather than in each screen for the same reason the press cue is: a
 	 * route added tomorrow has music without anyone remembering to give it any.
-	 * The one exception is a live question, where the loop ducks to a bed.
+	 * A live question ducks it to a bed, and the credits step it down a little
+	 * and start it from the top.
 	 *
 	 * This is deliberately the *only* writer of the music level. When the play
 	 * screen also asserted its own, the two raced on the way back from REVIEW —
@@ -52,11 +53,20 @@
 	 * a locale prefix and the route id does not.
 	 */
 	$effect(() => {
+		const route = page.route.id
 		const phase = activeRunState.run.phase
 		// Loading counts: the loop should already be down by the time the first
 		// prompt lands, not duck under it.
 		const live = phase === 'loading' || phase === 'asking' || phase === 'feedback'
-		setMusic(page.route.id === '/play' && live ? 'bed' : 'full')
+		if (route === '/credit') {
+			// The roll plays the cabinet's own theme, stepped down from full and
+			// restarted from its opening bar — the one screen that gets the track
+			// from the top, because a credits roll begins rather than continues.
+			// `setMusic` owns that; see the note on it.
+			setMusic('credits')
+		} else {
+			setMusic(route === '/play' && live ? 'bed' : 'full')
+		}
 	})
 </script>
 
