@@ -57,17 +57,30 @@ const MASTER = 0.9
  * The title screen is what the loop was written for — nothing competes with it
  * there, so it plays at its own level. During a run it drops to a bed: the
  * player is reading a prompt against a ten-second clock, and music that can be
- * attended to is music in the way. Everywhere else the cabinet is quiet.
+ * attended to is music in the way. The credits sit between the two: the roll is
+ * reading, so the theme steps back from the title's level, but nothing is being
+ * timed and the music is half of what a credits roll is. Everywhere else the
+ * cabinet is quiet.
  *
- * All three sit far under the cues, which must always cut through.
+ * All four sit far under the cues, which must always cut through.
  */
-export type MusicLevel = 'title' | 'play' | 'off'
+export type MusicLevel = 'title' | 'credits' | 'play' | 'off'
 
 const MUSIC_LEVELS: Readonly<Record<MusicLevel, number>> = {
 	title: 0.22,
+	credits: 0.18,
 	play: 0.08,
 	off: 0,
 }
+
+/**
+ * How long the theme takes to duck away before the credits restart it, and to
+ * come back up under the first line of the roll.
+ *
+ * Short enough to read as one gesture rather than a pause, long enough that the
+ * cut to 0:00 happens in silence — a hard rewind on an audible loop is a click.
+ */
+const REWIND_FADE_MS = 400
 
 const MUTE_KEY = 'nihongo-attack:muted'
 
@@ -86,6 +99,8 @@ let loading: Promise<void> | null = null
 
 let music: HTMLAudioElement | null = null
 let musicLevel: MusicLevel = 'off'
+/** The in-flight volume ramp's timer, if one is running. See `rampTo`. */
+let fade: number | null = null
 
 function storedMute(): boolean {
 	if (typeof localStorage === 'undefined') return false
@@ -215,8 +230,69 @@ export function play(cue: Cue): void {
 	}
 }
 
+/** Drops any ramp in flight, so the last writer of the volume wins outright. */
+function stopFade(): void {
+	if (fade === null) return
+	clearInterval(fade)
+	fade = null
+}
+
+/** How often the ramp below touches the volume when the page is drawing. */
+const FADE_TICK_MS = 16
+
+/**
+ * Slides the music's volume to `target` over `ms`, then calls `done`.
+ *
+ * An element volume ramp rather than a gain node: the music is an `<audio>`
+ * element and never entered the graph the cues run through (see `setMusic`).
+ *
+ * ⚠ A timer and not `requestAnimationFrame`, though this is an animation and
+ * `rAF` is the obvious reach. A volume fade is not a picture: it has to finish
+ * on a page that is not painting — backgrounded, occluded, a window behind
+ * another — and `rAF` does not run there. Driven by frames, a fade that starts
+ * as the page stops drawing stalls *partway*, and since the rewind below fades
+ * out and then back in, the stall lands on silence and stays there. The clock
+ * is read from `performance.now()` rather than counted in ticks, so a throttled
+ * timer (background tabs get ~1/s) simply lands the ramp in fewer, larger
+ * steps instead of stretching it.
+ *
+ * A ramp that is interrupted never calls `done` — which is what makes the
+ * rewind below safe. Leave the credits mid-duck and the track is simply left
+ * where it stands, because the callback that would have rewound it is gone.
+ */
+function rampTo(target: number, ms: number, done?: () => void): void {
+	stopFade()
+	const el = music
+	if (!el) return
+	const from = el.volume
+	if (from === target) {
+		done?.()
+		return
+	}
+	const start = performance.now()
+	fade = setInterval(() => {
+		const t = Math.min((performance.now() - start) / ms, 1)
+		el.volume = from + (target - from) * t
+		if (t < 1) return
+		stopFade()
+		done?.()
+	}, FADE_TICK_MS) as unknown as number
+}
+
+/** Sends the track back to its opening bar. */
+function rewind(el: HTMLAudioElement): void {
+	try {
+		el.currentTime = 0
+	} catch {
+		// A browser that will not seek an element it has not loaded yet. The
+		// track plays from wherever it is; nothing downstream depends on 0:00.
+	}
+}
+
 function applyMusic(): void {
 	if (!music) return
+	// Whatever a ramp was on its way to, this is the new truth.
+	stopFade()
 	const wanted = musicLevel !== 'off' && !mutedState
 	music.volume = wanted ? MUSIC_LEVELS[musicLevel] : 0
 	if (wanted) {
@@ -241,16 +317,45 @@ function applyMusic(): void {
  * play back something that needs no scheduling and never overlaps itself. It
  * also means moving between screens is a volume change on one running element
  * rather than a stop and a start, so the loop never restarts mid-navigation.
+ *
+ * The credits are the one exception, and deliberately so. Everywhere else the
+ * carry-over is the point — you stepped out of the room and the tape kept
+ * running. But a credits roll is a thing that *begins*: entering it on the tail
+ * of the title loop sounds like the title screen's music following you in
+ * rather than the roll having music of its own. So that one transition ducks
+ * the theme away, drops it back to 0:00, and brings it up under the first line.
  */
 export function setMusic(level: MusicLevel): void {
 	if (typeof Audio !== 'function') return
 	if (level === musicLevel && music) return
+	// Read before the new level is stored, so the two facts describe the
+	// transition being made and not the state it is landing in.
+	const restart = level === 'credits'
+	const running = music !== null && !music.paused && !mutedState
 	musicLevel = level
 	if (!music) {
 		if (level === 'off') return
 		music = new Audio('/sfx/bgm.mp3')
 		music.loop = true
 		music.preload = 'auto'
+	}
+
+	if (restart && running) {
+		// Audible, so the rewind has to happen in the gap rather than under the
+		// track. `applyMusic` is not called: the element is already playing, and
+		// the ramp owns the volume until it lands.
+		const el = music
+		rampTo(0, REWIND_FADE_MS, () => {
+			rewind(el)
+			rampTo(MUSIC_LEVELS.credits, REWIND_FADE_MS)
+		})
+		return
+	}
+	if (restart) {
+		// Silent — muted, or a cold load that opened straight onto the credits.
+		// Nothing to hide, so the cut is free, and the roll still opens on 0:00
+		// whenever the sound does come up.
+		rewind(music)
 	}
 	applyMusic()
 }

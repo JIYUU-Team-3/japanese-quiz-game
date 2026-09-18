@@ -55,6 +55,12 @@
 		const route = page.route.id
 		if (route === '/') {
 			setMusic('title')
+		} else if (route === '/credit') {
+			// The roll plays the cabinet's own theme, stepped down from the title
+			// and restarted from its opening bar — the one screen that gets the
+			// track from the top, because a credits roll begins rather than
+			// continues. `setMusic` owns that; see the note on it.
+			setMusic('credits')
 		} else if (route === '/play') {
 			// GAME OVER goes quiet: the score the player is about to put their name
 			// on should have the room to itself.
