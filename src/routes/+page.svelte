@@ -46,7 +46,7 @@
 				<span class="title-en glow-beam">NIHONGO ATTACK</span>
 			</h1>
 
-			<p class="tagline readable glow-beam">語彙と文法。１問１０秒。ミス３回で終了。</p>
+			<p class="tagline hud glow-beam">語彙と文法。１問１０秒。ミス３回で終了。</p>
 
 			<a class="start hud" href={resolve('/play')} onclick={resetActiveRun}>
 				<span class="blink">PUSH START</span>
