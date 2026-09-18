@@ -5,14 +5,7 @@
 	import { activeRunState } from '#lib/game/run.svelte.js'
 	import { locales, localizeHref } from '#lib/paraglide/runtime.js'
 	import favicon from '#lib/assets/favicon.svg'
-	import {
-		play,
-		setMusic,
-		sound,
-		toggleMusic,
-		toggleSfx,
-		unlockAudio,
-	} from '#lib/game/sound.svelte.js'
+	import { play, setMusic, unlockAudio } from '#lib/game/sound.svelte.js'
 	import '#lib/styles/arcade.css'
 
 	let { children } = $props()
@@ -102,82 +95,8 @@
 
 {@render children()}
 
-<!-- The volume switches live on the cabinet, not on the tube: they are hardware
-     the player reaches for, never part of the picture the game is drawing.
-     Two of them, because turning the music down to play your own is a different
-     want from turning off the cues that tell you whether you were right. -->
-<div class="switches">
-	<button
-		class="sound-switch hud"
-		onclick={toggleMusic}
-		aria-pressed={sound.musicOn}
-		title={sound.musicOn ? 'Turn music off' : 'Turn music on'}
-	>
-		<span class="lamp" class:off={!sound.musicOn} aria-hidden="true"></span>
-		BGM {sound.musicOn ? 'ON' : 'OFF'}
-	</button>
-	<button
-		class="sound-switch hud"
-		onclick={toggleSfx}
-		aria-pressed={sound.sfxOn}
-		title={sound.sfxOn ? 'Turn sound effects off' : 'Turn sound effects on'}
-	>
-		<span class="lamp" class:off={!sound.sfxOn} aria-hidden="true"></span>
-		SFX {sound.sfxOn ? 'ON' : 'OFF'}
-	</button>
-</div>
-
 <div style="display:none">
 	{#each locales as locale (locale)}
 		<a href={resolve(localizeHref(page.url.pathname, { locale }) as Path)}>{locale}</a>
 	{/each}
 </div>
-
-<style>
-	/* Stacked and stretched, so the two switches are one block of hardware: the
-	   wider label sets the width and BGM sits squarely above SFX. */
-	.switches {
-		position: fixed;
-		right: clamp(8px, 2vw, 20px);
-		bottom: clamp(8px, 2vw, 20px);
-		z-index: 10;
-		display: flex;
-		flex-direction: column;
-		align-items: stretch;
-		gap: 6px;
-	}
-
-	.sound-switch {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		padding: 7px 12px;
-		font-size: clamp(0.55rem, 1.5vw, 0.68rem);
-		letter-spacing: 0.18em;
-		color: #7d88b4;
-		background: #10142a;
-		border: var(--rule) solid #232b4e;
-		border-radius: 4px;
-		cursor: pointer;
-	}
-	.sound-switch:hover,
-	.sound-switch:focus-visible {
-		color: var(--beam);
-		border-color: #3a4570;
-	}
-
-	/* The switch's own indicator: lit gold when the cabinet has a voice, dead
-	   grey when it does not. Colour is never the only signal — the label beside
-	   it says ON or OFF in words. */
-	.lamp {
-		width: 8px;
-		height: 8px;
-		border-radius: 50%;
-		background: var(--gold);
-		box-shadow: 0 0 8px rgb(255 196 0 / 0.9);
-	}
-	.lamp.off {
-		background: #2a3050;
-		box-shadow: none;
-	}
-</style>
