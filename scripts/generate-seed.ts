@@ -14,6 +14,8 @@
  *   node --experimental-strip-types scripts/generate-seed.ts > drizzle/seed.sql
  */
 
+import { writeFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { OFFICIAL_QUESTIONS, TOPICS } from '../src/lib/game/official-data.ts'
 
 /** SQLite string literal: single quotes doubled, nothing else escaped. */
@@ -60,6 +62,10 @@ for (const question of OFFICIAL_QUESTIONS) {
 		)
 	}
 }
+
 lines.push('')
 
-process.stdout.write(lines.join('\n'))
+const output = lines.join('\n')
+const seedPath = resolve(import.meta.dirname, '../drizzle/seed.sql')
+writeFileSync(seedPath, output, 'utf-8')
+process.stdout.write(output)
