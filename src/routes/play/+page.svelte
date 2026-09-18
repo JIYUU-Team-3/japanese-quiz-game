@@ -69,7 +69,7 @@
 		prevAsked = done
 	})
 
-	// GAME OVER gets its own cue. The music that drops away under it is the
+	// GAME OVER gets its own cue. The music coming back up under it is the
 	// layout's doing, not this screen's — it owns the music level for every
 	// route, and reads the run's phase to know this one.
 	$effect(() => {

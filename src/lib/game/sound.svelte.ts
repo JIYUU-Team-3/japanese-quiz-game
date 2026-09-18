@@ -52,21 +52,18 @@ export const MISS_CUE_MS = 740
 const MASTER = 0.9
 
 /**
- * Where the music stands on each screen.
+ * Where the music stands.
  *
- * The title screen is what the loop was written for — nothing competes with it
- * there, so it plays at its own level. During a run it drops to a bed: the
- * player is reading a prompt against a ten-second clock, and music that can be
- * attended to is music in the way. Everywhere else the cabinet is quiet.
- *
- * All three sit far under the cues, which must always cut through.
+ * The cabinet is never silent: the loop runs on every screen at its own level,
+ * and drops to a bed only while a question is live — the player is reading a
+ * prompt against a ten-second clock, and music that can be attended to is
+ * music in the way. Both sit far under the cues, which must always cut through.
  */
-export type MusicLevel = 'title' | 'play' | 'off'
+export type MusicLevel = 'full' | 'bed'
 
 const MUSIC_LEVELS: Readonly<Record<MusicLevel, number>> = {
-	title: 0.22,
-	play: 0.08,
-	off: 0,
+	full: 0.22,
+	bed: 0.08,
 }
 
 const MUTE_KEY = 'nihongo-attack:muted'
@@ -85,7 +82,7 @@ const buffers: Partial<Record<Cue, AudioBuffer>> = {}
 let loading: Promise<void> | null = null
 
 let music: HTMLAudioElement | null = null
-let musicLevel: MusicLevel = 'off'
+let musicLevel: MusicLevel | null = null
 
 function storedMute(): boolean {
 	if (typeof localStorage === 'undefined') return false
@@ -217,24 +214,23 @@ export function play(cue: Cue): void {
 
 function applyMusic(): void {
 	if (!music) return
-	const wanted = musicLevel !== 'off' && !mutedState
-	music.volume = wanted ? MUSIC_LEVELS[musicLevel] : 0
-	if (wanted) {
-		// A rejected play() means the first gesture has not happened yet — which
-		// is the normal state of the title screen on a cold load, since that is
-		// the screen a visitor lands on. `musicLevel` stays set, and `unlockAudio`
-		// comes back through here on the first press.
-		void music.play().catch(() => undefined)
-	} else {
-		// Paused where it stands, never rewound. Crossing to the ranking and back
-		// should feel like stepping out of the room, not like restarting the tape.
+	if (musicLevel === null || mutedState) {
+		// Paused where it stands, never rewound, so turning sound back on picks the tape up
+		// where it was rather than starting it over.
+		music.volume = 0
 		music.pause()
+		return
 	}
+	music.volume = MUSIC_LEVELS[musicLevel]
+	// A rejected play() means the first gesture has not happened yet — the
+	// normal state of whatever screen a visitor lands on cold. `musicLevel`
+	// stays set, and `unlockAudio` comes back through here on the first press.
+	void music.play().catch(() => undefined)
 }
 
 /**
- * Says where the music should stand. Idempotent, so a screen can assert its own
- * level as often as it likes.
+ * Says where the music should stand. Idempotent, so it can be asserted as often
+ * as the caller likes.
  *
  * The music is an `<audio>` element rather than a buffer in the graph above:
  * it is 50 seconds long, and decoding it to PCM would cost ~19MB of memory to
@@ -247,7 +243,6 @@ export function setMusic(level: MusicLevel): void {
 	if (level === musicLevel && music) return
 	musicLevel = level
 	if (!music) {
-		if (level === 'off') return
 		music = new Audio('/sfx/bgm.mp3')
 		music.loop = true
 		music.preload = 'auto'

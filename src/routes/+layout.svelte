@@ -38,13 +38,13 @@
 	 * Where the music stands, decided by which screen is up.
 	 *
 	 * Here rather than in each screen for the same reason the press cue is: a
-	 * route added tomorrow is silent by default, and no screen can forget to
-	 * hand the music off on its way out.
+	 * route added tomorrow has music without anyone remembering to give it any.
+	 * The one exception is a live question, where the loop ducks to a bed.
 	 *
 	 * This is deliberately the *only* writer of the music level. When the play
 	 * screen also asserted its own, the two raced on the way back from REVIEW —
 	 * this effect re-runs on the route change while that screen is mounting, and
-	 * whichever landed second won, which resumed the bed under a finished run.
+	 * whichever landed second won, leaving the wrong level under the run.
 	 * One reader of both facts has no such ordering to get wrong. `run` is shared
 	 * state that outlives every screen, so reading it here is free.
 	 *
@@ -52,16 +52,11 @@
 	 * a locale prefix and the route id does not.
 	 */
 	$effect(() => {
-		const route = page.route.id
-		if (route === '/') {
-			setMusic('title')
-		} else if (route === '/play') {
-			// GAME OVER goes quiet: the score the player is about to put their name
-			// on should have the room to itself.
-			setMusic(activeRunState.run.phase === 'over' ? 'off' : 'play')
-		} else {
-			setMusic('off')
-		}
+		const phase = activeRunState.run.phase
+		// Loading counts: the loop should already be down by the time the first
+		// prompt lands, not duck under it.
+		const live = phase === 'loading' || phase === 'asking' || phase === 'feedback'
+		setMusic(page.route.id === '/play' && live ? 'bed' : 'full')
 	})
 </script>
 
