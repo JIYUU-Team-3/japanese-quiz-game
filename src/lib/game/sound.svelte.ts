@@ -3,11 +3,13 @@
  *
  * Every cue is a recorded sample under `static/sfx`, played through one Web
  * Audio graph so the game has a single master to mute and a single place to
- * balance levels.
+ * balance levels. The music is separate — media elements rather than the graph,
+ * with its own switch — for the reasons given at `sound` and `setMusic`.
  *
- * This file carries a rune (`muted`) because the mute switch is state a screen
- * binds to — hence the `.svelte.ts` extension. Nothing else here is reactive:
- * the cues are fired imperatively, the way a button press fires one.
+ * This file carries runes (`musicMuted`, `sfxMuted`) because the two switches
+ * are state a screen binds to — hence the `.svelte.ts` extension. Nothing else
+ * here is reactive: the cues are fired imperatively, the way a button press
+ * fires one.
  */
 
 /** Cue names, as the screens say them. */
@@ -52,37 +54,87 @@ export const MISS_CUE_MS = 740
 const MASTER = 0.9
 
 /**
- * Where the music stands on each screen.
+ * The cabinet's four pieces of music, and what each one is for.
  *
- * The title screen is what the loop was written for — nothing competes with it
- * there, so it plays at its own level. During a run it drops to a bed: the
- * player is reading a prompt against a ten-second clock, and music that can be
- * attended to is music in the way. The credits sit between the two: the roll is
- * reading, so the theme steps back from the title's level, but nothing is being
- * timed and the music is half of what a credits roll is. Everywhere else the
- * cabinet is quiet.
+ * `gain` is not taste, on the same principle as the cue gains above. The four
+ * tracks are four different masters and arrive at four different loudnesses, so
+ * an equal `gain` would *not* be an equal volume — the quiz track alone is 5 LU
+ * hotter than the title theme. Each was measured (EBU R128 integrated loudness
+ * over the whole file) and its gain is the factor that lands it on one shared
+ * level, so no track jumps when the cabinet hands over to the next:
  *
- * All four sit far under the cues, which must always cut through.
+ *   title    −17.2 LUFS → ×0.22      play     −11.9 LUFS → ×0.12
+ *   credits  −13.5 LUFS → ×0.14      gameover −12.0 LUFS → ×0.12
+ *
+ * That level is ≈−30.4 LUFS out, which is where the title theme at 0.22 already
+ * sat — it was the one the cabinet was balanced at, so it is the one the other
+ * three were brought to. The spread across all four is now under 0.3 LU, well
+ * inside what anyone can hear. They still sit far under the cues, which must
+ * always cut through.
+ *
+ * Replace a file and the number beside it is wrong. Remeasure it with
+ * `ffmpeg -i <file> -af ebur128 -f null -` and solve for the gain that holds
+ * the shared level — `10 ^ ((−30.4 − measured) / 20)` — do not guess.
+ *
+ * `fromTop` says whether cueing the track restarts it. A run, a credits roll
+ * and a game over each *begin*, so they get their opening bar; the title theme
+ * is the room you keep coming back to, so it carries on where it stood.
  */
-export type MusicLevel = 'title' | 'credits' | 'play' | 'off'
+export type MusicTrack = 'title' | 'play' | 'credits' | 'gameover'
 
-const MUSIC_LEVELS: Readonly<Record<MusicLevel, number>> = {
-	title: 0.22,
-	credits: 0.18,
-	play: 0.08,
-	off: 0,
+/** What a screen asks for: one of the tracks, or silence. */
+export type MusicCue = MusicTrack | 'off'
+
+const TRACKS: Readonly<Record<MusicTrack, { src: string; gain: number; fromTop: boolean }>> = {
+	title: { src: '/sfx/bgm.mp3', gain: 0.22, fromTop: false },
+	play: { src: '/sfx/play-bgm.mp3', gain: 0.12, fromTop: true },
+	credits: { src: '/sfx/credit.mp3', gain: 0.14, fromTop: true },
+	gameover: { src: '/sfx/gameover.mp3', gain: 0.12, fromTop: true },
 }
 
-/**
- * How long the theme takes to duck away before the credits restart it, and to
- * come back up under the first line of the roll.
- *
- * Short enough to read as one gesture rather than a pause, long enough that the
- * cut to 0:00 happens in silence — a hard rewind on an audible loop is a click.
- */
-const REWIND_FADE_MS = 400
+const TRACK_NAMES = Object.keys(TRACKS) as MusicTrack[]
 
-const MUTE_KEY = 'nihongo-attack:muted'
+/**
+ * How long one track takes to hand over to the next.
+ *
+ * The two ramps run together rather than end to end: the outgoing track is
+ * still audible as the incoming one arrives, which is what makes a change of
+ * screen feel like a change of scene instead of a tape being swapped.
+ */
+const CROSSFADE_MS = 900
+
+/**
+ * How long a track left over from an interrupted handover gets to disappear.
+ *
+ * Short, because the player has already moved past the change it belonged to
+ * and it is only in the way — but not instant, since cutting an audible element
+ * dead is a click. See the loop in `setMusic`.
+ */
+const STRAGGLER_FADE_MS = 150
+
+/**
+ * How long `positive.mp3` — the GAME OVER cue — is actually audible.
+ *
+ * Measured, not taken from the file length: the file is 1698ms but the hit has
+ * decayed into the noise by 1120ms and the rest is silence. The game-over theme
+ * is held off until this has passed, so the cue gets the room to itself and the
+ * music arrives after it rather than under it.
+ *
+ * ⚠ Tied to the `over` cue's file. Replace `positive.mp3` and remeasure.
+ */
+const OVER_CUE_MS = 1120
+
+const MUSIC_MUTE_KEY = 'nihongo-attack:muted:music'
+const SFX_MUTE_KEY = 'nihongo-attack:muted:sfx'
+/**
+ * The single switch these two replaced.
+ *
+ * Still read, as the fallback for either, so a player who silenced the cabinet
+ * when it had one switch finds it silent when it has two. Left in place rather
+ * than migrated and deleted: it costs one read on a cold load, and a player who
+ * goes back to an older build keeps their preference.
+ */
+const LEGACY_MUTE_KEY = 'nihongo-attack:muted'
 
 let ctx: AudioContext | null = null
 let bus: GainNode | null = null
@@ -97,15 +149,24 @@ let failed = false
 const buffers: Partial<Record<Cue, AudioBuffer>> = {}
 let loading: Promise<void> | null = null
 
-let music: HTMLAudioElement | null = null
-let musicLevel: MusicLevel = 'off'
-/** The in-flight volume ramp's timer, if one is running. See `rampTo`. */
-let fade: number | null = null
+/**
+ * One `<audio>` element per track, built the first time that track is cued.
+ *
+ * Lazy because the four of them are ~14MB between them: a player who only ever
+ * sees the title screen should pay for the title theme and nothing else.
+ */
+const players: Partial<Record<MusicTrack, HTMLAudioElement>> = {}
+/** The in-flight volume ramp per track, if one is running. See `rampTo`. */
+const fades: Partial<Record<MusicTrack, number>> = {}
+/** The track the cabinet wants playing, or null for silence. */
+let current: MusicTrack | null = null
+/** A cue waiting out the GAME OVER hit before it comes in. See `setMusic`. */
+let held: number | null = null
 
-function storedMute(): boolean {
+function storedMute(key: string): boolean {
 	if (typeof localStorage === 'undefined') return false
 	try {
-		return localStorage.getItem(MUTE_KEY) === '1'
+		return (localStorage.getItem(key) ?? localStorage.getItem(LEGACY_MUTE_KEY)) === '1'
 	} catch {
 		// Private mode, or storage disabled. The preference is a convenience,
 		// never a requirement.
@@ -113,33 +174,61 @@ function storedMute(): boolean {
 	}
 }
 
-let mutedState = $state(storedMute())
+function remember(key: string, muted: boolean): void {
+	try {
+		localStorage.setItem(key, muted ? '1' : '0')
+	} catch {
+		// Nothing to do, and nothing worth telling the player about.
+	}
+}
+
+let musicMuted = $state(storedMute(MUSIC_MUTE_KEY))
+let sfxMuted = $state(storedMute(SFX_MUTE_KEY))
 
 /**
- * The mute switch, as a screen sees it.
+ * The two mute switches, as a screen sees them.
  *
- * An object with an accessor rather than a bare `export let`, because a module
- * export cannot carry reactivity across an import boundary — the getter can.
+ * Separate because they are two different complaints. Music is the thing a
+ * player turns off to put their own on; the cues are what tells them they were
+ * right or wrong, and silencing those takes information away rather than just
+ * atmosphere. One switch could only ever answer both at once.
+ *
+ * They reach the sound through different paths, and that is not incidental:
+ * the cues run through one gain node, so `sfx` is that node, while the music is
+ * a set of media elements, so `music` goes out through `applyMusic`.
+ *
+ * Read as ON rather than muted, because that is what the switch on the cabinet
+ * says. An object with accessors rather than bare exports, because a module
+ * export cannot carry reactivity across an import boundary — the getters can.
  */
 export const sound = {
-	get muted(): boolean {
-		return mutedState
+	get musicOn(): boolean {
+		return !musicMuted
 	},
-	set muted(next: boolean) {
-		mutedState = next
-		try {
-			localStorage.setItem(MUTE_KEY, next ? '1' : '0')
-		} catch {
-			// Nothing to do, and nothing worth telling the player about.
-		}
-		if (bus && ctx) bus.gain.setTargetAtTime(next ? 0 : MASTER, ctx.currentTime, 0.01)
-		applyMusic()
+	set musicOn(on: boolean) {
+		musicMuted = !on
+		remember(MUSIC_MUTE_KEY, musicMuted)
+		// Hard: a crossfade in flight loses to the switch, rather than fading up
+		// into a cabinet the player has just silenced.
+		applyMusic(true)
+	},
+	get sfxOn(): boolean {
+		return !sfxMuted
+	},
+	set sfxOn(on: boolean) {
+		sfxMuted = !on
+		remember(SFX_MUTE_KEY, sfxMuted)
+		if (bus && ctx) bus.gain.setTargetAtTime(sfxMuted ? 0 : MASTER, ctx.currentTime, 0.01)
 	},
 }
 
-/** Flips the switch. What the on-screen control calls. */
-export function toggleMute(): void {
-	sound.muted = !sound.muted
+/** Flips one switch or the other. What the on-screen controls call. */
+export function toggleMusic(): void {
+	sound.musicOn = !sound.musicOn
+}
+
+export function toggleSfx(): void {
+	sound.sfxOn = !sound.sfxOn
 }
 
 function context(): AudioContext | null {
@@ -156,7 +245,7 @@ function context(): AudioContext | null {
 	try {
 		ctx = new Ctor()
 		bus = ctx.createGain()
-		bus.gain.value = mutedState ? 0 : MASTER
+		bus.gain.value = sfxMuted ? 0 : MASTER
 		bus.connect(ctx.destination)
 		return ctx
 	} catch {
@@ -211,7 +300,7 @@ export function unlockAudio(): void {
  */
 export function play(cue: Cue): void {
 	const audio = ctx
-	if (!audio || !bus || mutedState || audio.state !== 'running') return
+	if (!audio || !bus || sfxMuted || audio.state !== 'running') return
 	const buffer = buffers[cue]
 	if (!buffer) return
 
@@ -230,39 +319,39 @@ export function play(cue: Cue): void {
 	}
 }
 
-/** Drops any ramp in flight, so the last writer of the volume wins outright. */
-function stopFade(): void {
-	if (fade === null) return
-	clearInterval(fade)
-	fade = null
+/** Drops the ramp on one track, so the last writer of its volume wins outright. */
+function stopFade(track: MusicTrack): void {
+	const timer = fades[track]
+	if (timer === undefined) return
+	clearInterval(timer)
+	delete fades[track]
 }
 
-/** How often the ramp below touches the volume when the page is drawing. */
+/** How often a ramp touches the volume. */
 const FADE_TICK_MS = 16
 
 /**
- * Slides the music's volume to `target` over `ms`, then calls `done`.
+ * Slides one track's volume to `target` over `ms`, then calls `done`.
  *
- * An element volume ramp rather than a gain node: the music is an `<audio>`
- * element and never entered the graph the cues run through (see `setMusic`).
+ * Element volumes rather than gain nodes: the music never entered the graph the
+ * cues run through (see `setMusic`). Ramps are per track and run independently,
+ * which is what lets two of them overlap into a crossfade.
  *
  * ⚠ A timer and not `requestAnimationFrame`, though this is an animation and
  * `rAF` is the obvious reach. A volume fade is not a picture: it has to finish
  * on a page that is not painting — backgrounded, occluded, a window behind
  * another — and `rAF` does not run there. Driven by frames, a fade that starts
- * as the page stops drawing stalls *partway*, and since the rewind below fades
- * out and then back in, the stall lands on silence and stays there. The clock
- * is read from `performance.now()` rather than counted in ticks, so a throttled
- * timer (background tabs get ~1/s) simply lands the ramp in fewer, larger
- * steps instead of stretching it.
+ * as the page stops drawing stalls *partway*, which for a crossfade means both
+ * tracks stranded half-up until the page draws again. The clock is read from
+ * `performance.now()` rather than counted in ticks, so a throttled timer
+ * (background tabs get ~1/s) simply lands the ramp in fewer, larger steps.
  *
- * A ramp that is interrupted never calls `done` — which is what makes the
- * rewind below safe. Leave the credits mid-duck and the track is simply left
- * where it stands, because the callback that would have rewound it is gone.
+ * A ramp that is interrupted never calls `done`, so whatever was meant to
+ * happen at the bottom of a fade — a pause, a rewind — is abandoned with it.
  */
-function rampTo(target: number, ms: number, done?: () => void): void {
-	stopFade()
-	const el = music
+function rampTo(track: MusicTrack, target: number, ms: number, done?: () => void): void {
+	stopFade(track)
+	const el = players[track]
 	if (!el) return
 	const from = el.volume
 	if (from === target) {
@@ -270,16 +359,16 @@ function rampTo(target: number, ms: number, done?: () => void): void {
 		return
 	}
 	const start = performance.now()
-	fade = setInterval(() => {
+	fades[track] = setInterval(() => {
 		const t = Math.min((performance.now() - start) / ms, 1)
 		el.volume = from + (target - from) * t
 		if (t < 1) return
-		stopFade()
+		stopFade(track)
 		done?.()
 	}, FADE_TICK_MS) as unknown as number
 }
 
-/** Sends the track back to its opening bar. */
+/** Sends a track back to its opening bar. */
 function rewind(el: HTMLAudioElement): void {
 	try {
 		el.currentTime = 0
@@ -289,73 +378,152 @@ function rewind(el: HTMLAudioElement): void {
 	}
 }
 
-function applyMusic(): void {
-	if (!music) return
-	// Whatever a ramp was on its way to, this is the new truth.
-	stopFade()
-	const wanted = musicLevel !== 'off' && !mutedState
-	music.volume = wanted ? MUSIC_LEVELS[musicLevel] : 0
-	if (wanted) {
-		// A rejected play() means the first gesture has not happened yet — which
-		// is the normal state of the title screen on a cold load, since that is
-		// the screen a visitor lands on. `musicLevel` stays set, and `unlockAudio`
-		// comes back through here on the first press.
-		void music.play().catch(() => undefined)
-	} else {
-		// Paused where it stands, never rewound. Crossing to the ranking and back
-		// should feel like stepping out of the room, not like restarting the tape.
-		music.pause()
+/**
+ * The element for a track, built on first use.
+ *
+ * The element points straight at the file. Handing it a `blob:` URL instead
+ * hides the track from download-manager extensions that watch for media
+ * elements, and that was tried here — but it does not stop the ones that watch
+ * the network instead, because the file still has to cross it as an `.mp3`.
+ * It bought nothing those extensions could not see around, at the cost of
+ * holding every track's bytes in memory for the session. Not worth it.
+ */
+function player(track: MusicTrack): HTMLAudioElement | null {
+	if (typeof Audio !== 'function') return null
+	let el = players[track]
+	if (!el) {
+		el = new Audio(TRACKS[track].src)
+		el.loop = true
+		el.preload = 'auto'
+		// Silent until a ramp brings it up, so a track that starts playing before
+		// its crossfade is scheduled cannot blurt out at full level first.
+		el.volume = 0
+		players[track] = el
+	}
+	return el
+}
+
+/**
+ * Starts a track and fades it up to its level.
+ *
+ * Separate from `setMusic` because the game-over theme reaches this a beat
+ * later than the cue that asked for it — see there.
+ */
+function bringIn(track: MusicTrack): void {
+	const el = player(track)
+	if (!el) return
+	// From the top only while it is inaudible. Rewinding a track the player can
+	// still hear is a click, and a quick there-and-back should not stutter.
+	if (TRACKS[track].fromTop && (el.paused || el.volume < 0.01)) rewind(el)
+	if (musicMuted) {
+		el.volume = 0
+		el.pause()
+		return
+	}
+	if (el.paused) el.volume = 0
+	// A rejected play() means the first gesture has not happened yet — the normal
+	// state of the title screen on a cold load, since that is where a visitor
+	// lands. `current` stays set, and `unlockAudio` comes back for it.
+	void el.play().catch(() => undefined)
+	rampTo(track, TRACKS[track].gain, CROSSFADE_MS)
+}
+
+/**
+ * Puts every track where `current` and the mute switch say it should be.
+ *
+ * `hard` cuts straight there, for the mute switch — a switch is a switch, not a
+ * fade. Without it, a track with a ramp in flight is left alone: that ramp is a
+ * crossfade in progress, and stepping on its volume mid-flight is exactly what
+ * turns the handover into a jump. This runs on every press (through
+ * `unlockAudio`), so those presses must not be able to cut one short.
+ */
+function applyMusic(hard = false): void {
+	for (const track of TRACK_NAMES) {
+		const el = players[track]
+		if (!el) continue
+		if (hard) stopFade(track)
+		const wanted = track === current && !musicMuted
+		if (fades[track] !== undefined) {
+			// The ramp owns the volume, but not whether the element is running: this
+			// may be the gesture that lets a refused play() finally through.
+			if (wanted) void el.play().catch(() => undefined)
+			continue
+		}
+		el.volume = wanted ? TRACKS[track].gain : 0
+		if (wanted) void el.play().catch(() => undefined)
+		// Paused where it stands, not rewound: `fromTop` decides at the next cue
+		// whether that track begins again or picks up.
+		else el.pause()
 	}
 }
 
 /**
- * Says where the music should stand. Idempotent, so a screen can assert its own
- * level as often as it likes.
+ * Says which track the cabinet should be playing. Idempotent, so a screen can
+ * assert its own as often as it likes.
  *
- * The music is an `<audio>` element rather than a buffer in the graph above:
- * it is 50 seconds long, and decoding it to PCM would cost ~19MB of memory to
- * play back something that needs no scheduling and never overlaps itself. It
- * also means moving between screens is a volume change on one running element
- * rather than a stop and a start, so the loop never restarts mid-navigation.
+ * Changes are crossfades: the outgoing track ramps down while the incoming one
+ * ramps up over the same `CROSSFADE_MS`, so nothing ever stops dead. Silence
+ * (`'off'`) is the same move with nothing coming in.
  *
- * The credits are the one exception, and deliberately so. Everywhere else the
- * carry-over is the point — you stepped out of the room and the tape kept
- * running. But a credits roll is a thing that *begins*: entering it on the tail
- * of the title loop sounds like the title screen's music following you in
- * rather than the roll having music of its own. So that one transition ducks
- * the theme away, drops it back to 0:00, and brings it up under the first line.
+ * The music is `<audio>` elements rather than buffers in the graph above: the
+ * four run to eight and a half minutes between them, and decoding that to PCM
+ * would cost hundreds of megabytes to play back something that needs no
+ * scheduling. The cost is that they are ordinary media elements, so the fades
+ * here are volume ramps rather than scheduled gain — see `rampTo`.
+ *
+ * GAME OVER is the one cue that does not always come in at once. When a run
+ * ends, the screen fires the `over` hit at the same moment it asks for this
+ * music, and a theme arriving underneath that hit muddies both, so the entry is
+ * held until the cue has rung out. The wait runs from here rather than from the
+ * cue itself because the two are fired by different screens in the same tick,
+ * in no guaranteed order, and a fixed offset from either is the same instant.
+ *
+ * The hold is keyed on coming *from* a run, not on the track: that transition
+ * is the only one the hit accompanies. Arriving at the same music any other way
+ * — opening the review directly, or coming back to it from the ranking — waits
+ * for nothing, because there is no cue to wait for.
  */
-export function setMusic(level: MusicLevel): void {
+export function setMusic(cue: MusicCue): void {
 	if (typeof Audio !== 'function') return
-	if (level === musicLevel && music) return
-	// Read before the new level is stored, so the two facts describe the
-	// transition being made and not the state it is landing in.
-	const restart = level === 'credits'
-	const running = music !== null && !music.paused && !mutedState
-	musicLevel = level
-	if (!music) {
-		if (level === 'off') return
-		music = new Audio('/sfx/bgm.mp3')
-		music.loop = true
-		music.preload = 'auto'
+	const next = cue === 'off' ? null : cue
+	if (next === current) return
+
+	// A held entry belongs to the cue that asked for it; this one replaces it.
+	if (held !== null) {
+		clearTimeout(held)
+		held = null
 	}
 
-	if (restart && running) {
-		// Audible, so the rewind has to happen in the gap rather than under the
-		// track. `applyMusic` is not called: the element is already playing, and
-		// the ramp owns the volume until it lands.
-		const el = music
-		rampTo(0, REWIND_FADE_MS, () => {
-			rewind(el)
-			rampTo(MUSIC_LEVELS.credits, REWIND_FADE_MS)
-		})
+	const outgoing = current
+	current = next
+
+	// Everything that is not the incoming track is sent to silence — not just the
+	// one being handed over from. Clicking through screens faster than a
+	// crossfade leaves the *previous* outgoing track still audible when the next
+	// handover starts, and three tracks at once is mud rather than a crossfade.
+	// The one being left gets the full musical handover; a straggler from a
+	// change the player has already moved past is dropped quickly instead, fast
+	// enough not to pile up and slow enough not to click.
+	for (const track of TRACK_NAMES) {
+		if (track === next) continue
+		// Captured rather than looked up when the ramp lands: by then this track
+		// may have been cued again and its element should not be paused.
+		const el = players[track]
+		// A paused element is already silent; its volume is reset when it is next
+		// brought in, so there is nothing here to fade.
+		if (!el || el.paused) continue
+		rampTo(track, 0, track === outgoing ? CROSSFADE_MS : STRAGGLER_FADE_MS, () => el.pause())
+	}
+	if (!next) return
+
+	// A run that just ended is the only way in that the `over` hit accompanies.
+	if (next === 'gameover' && outgoing === 'play') {
+		held = setTimeout(() => {
+			held = null
+			// Only if it is still wanted — the player may have left in the meantime.
+			if (current === 'gameover') bringIn('gameover')
+		}, OVER_CUE_MS) as unknown as number
 		return
 	}
-	if (restart) {
-		// Silent — muted, or a cold load that opened straight onto the credits.
-		// Nothing to hide, so the cut is free, and the roll still opens on 0:00
-		// whenever the sound does come up.
-		rewind(music)
-	}
-	applyMusic()
+	bringIn(next)
 }
