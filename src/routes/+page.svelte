@@ -2,6 +2,7 @@
 	import { resolve } from '$app/paths'
 	import { onMount } from 'svelte'
 	import { resetActiveRun } from '#lib/game/run.svelte.js'
+	import SoundSwitches from '#lib/components/SoundSwitches.svelte'
 	import type { PageData } from './$types'
 
 	let { data }: { data: PageData } = $props()
@@ -38,6 +39,10 @@
 			<span class="value glow-gold">{top[0]?.score.toLocaleString() ?? '0'}</span>
 			<span class="label glow-beam">LEVEL</span>
 			<span class="value glow-beam">N4 / N3</span>
+			<!-- The volume switches ride the marquee rather than floating over the
+			     tube: pinned to the corner they sat on top of the score readout the
+			     moment the screen narrowed, and in the row they wrap with it. -->
+			<div class="switch-slot"><SoundSwitches /></div>
 		</header>
 
 		<div class="stage">
@@ -111,7 +116,7 @@
 
 	.marquee {
 		display: flex;
-		align-items: baseline;
+		align-items: center;
 		gap: clamp(10px, 2.4vw, 26px);
 		padding: 14px var(--pad);
 		border-bottom: var(--rule) solid #1c2340;
@@ -123,6 +128,11 @@
 	}
 	.marquee .label + .value {
 		margin-inline-start: -0.4em;
+	}
+	/* Pushed to the far end of the row, and onto a right-aligned line of its own
+	   once the readout beside it runs out of width. */
+	.switch-slot {
+		margin-inline-start: auto;
 	}
 
 	.stage {
@@ -324,4 +334,9 @@
 			grid-template-columns: 1fr;
 		}
 	}
+
+	/* The marquee is one line on a phone or it is nothing: a score readout that
+	   wraps stops reading as the strip across the top of a cabinet. The row buys
+	   the width back from its own gaps and tracking, and the switches at the end
+	   of it shrink to match. */
 </style>
