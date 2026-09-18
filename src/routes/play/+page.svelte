@@ -69,9 +69,10 @@
 		prevAsked = done
 	})
 
-	// GAME OVER gets its own cue. The music that drops away under it is the
-	// layout's doing, not this screen's — it owns the music level for every
-	// route, and reads the run's phase to know this one.
+	// GAME OVER gets its own cue. The handover around it — the quiz theme going
+	// out under this hit, the game-over theme arriving once it has rung out — is
+	// the layout's doing, not this screen's: it owns the music for every route,
+	// and reads the run's phase to know this one.
 	$effect(() => {
 		const phase = run.phase
 		if (phase === 'over' && prevPhase !== 'over') play('over')
