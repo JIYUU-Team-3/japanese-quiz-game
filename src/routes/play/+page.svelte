@@ -2,22 +2,15 @@
 	import { onDestroy } from 'svelte'
 	import { resolve } from '$app/paths'
 	import { invalidateAll } from '$app/navigation'
-	import { Run, QUESTION_MS, START_LIVES } from '#lib/game/run.svelte.js'
+	import { activeRunState, resetActiveRun, QUESTION_MS, START_LIVES } from '#lib/game/run.svelte.js'
 	import { ApiError, fetchQuestions, placementFor, submitSession } from '#lib/game/api.js'
 	import { playMiss, releaseAudio, unlockAudio } from '#lib/game/sound.js'
-	import {
-		NAME_CHARS,
-		NAME_MAX,
-		PLAYABLE_LEVELS,
-		type JlptLevel,
-		type LeaderboardRow,
-		type RecordedSession,
-	} from '#lib/game/types.js'
+	import { NAME_CHARS, NAME_MAX, PLAYABLE_LEVELS, type JlptLevel } from '#lib/game/types.js'
 	import type { PageData } from './$types'
 
 	let { data }: { data: PageData } = $props()
 
-	const run = new Run()
+	const run = activeRunState.run
 	const LIFE_SLOTS = Array.from({ length: START_LIVES }, (_unused, i) => i)
 
 	/**
@@ -38,7 +31,7 @@
 	let misses = 0
 	// Held outside the reactive graph on purpose: it is the previous frame's
 	// value, which is the one thing a rune must not re-read.
-	let prevLives = START_LIVES
+	let prevLives = run.lives
 
 	// Every miss costs a life — a wrong pick and a timeout alike — so a life going
 	// is the one signal that covers both. The cue outlives the feedback pause
@@ -47,7 +40,7 @@
 	// motion, where the stamps that would otherwise end it are collapsed away.
 	$effect(() => {
 		const left = run.lives
-		if (left < prevLives) {
+		if ((run.phase === 'asking' || run.phase === 'feedback') && left < prevLives) {
 			miss = ++misses
 			// Same frame as the ✕ mounts. Both clocks start here and neither waits
 			// on JavaScript again, which is the only reason they stay together.
@@ -58,19 +51,16 @@
 		prevLives = left
 	})
 
-	// The board arrives with the document; once a run is recorded, the table the
-	// server hands back takes over, so HI-SCORE is never a guess.
-	let posted = $state<LeaderboardRow[] | null>(null)
-	const table = $derived(posted ?? data.table)
-	let name = $state('')
-	let recorded = $state<RecordedSession | null>(null)
+	const table = $derived(activeRunState.posted ?? data.table)
 	let sending = $state(false)
 	let loadError = $state<string | null>(null)
 	let submitError = $state<string | null>(null)
 
 	const hiScore = $derived(table[0]?.score ?? 0)
 	const seconds = $derived(Math.ceil(run.remaining / 1000))
-	const canSubmit = $derived(name.trim().length > 0 && !sending && recorded === null)
+	const canSubmit = $derived(
+		activeRunState.name.trim().length > 0 && !sending && activeRunState.recorded === null,
+	)
 
 	// A prediction, so GAME OVER can raise the name pad without waiting on the
 	// network. The rank finally shown is the one the server sends back.
@@ -89,8 +79,8 @@
 		unlockAudio()
 		clearTimeout(missTimer)
 		miss = null
-		recorded = null
-		name = ''
+		activeRunState.recorded = null
+		activeRunState.name = ''
 		loadError = null
 		submitError = null
 		run.loading(level)
@@ -99,22 +89,22 @@
 			const questions = await fetchQuestions(level)
 			if (questions.length === 0) {
 				loadError = `${level} HAS NO QUESTIONS YET`
-				run.reset()
+				resetActiveRun()
 				return
 			}
 			run.start(level, questions)
 		} catch (cause) {
 			loadError = cause instanceof ApiError ? cause.message : 'COULD NOT LOAD QUESTIONS'
-			run.reset()
+			resetActiveRun()
 		}
 	}
 
 	function pushChar(char: string) {
-		if (name.length < NAME_MAX) name += char
+		if (activeRunState.name.length < NAME_MAX) activeRunState.name += char
 	}
 
 	function backspace() {
-		name = name.slice(0, -1)
+		activeRunState.name = activeRunState.name.slice(0, -1)
 	}
 
 	/**
@@ -129,9 +119,9 @@
 		sending = true
 		submitError = null
 		try {
-			const response = await submitSession(run.toSubmission(name))
-			recorded = response.recorded
-			posted = response.table
+			const response = await submitSession(run.toSubmission(activeRunState.name))
+			activeRunState.recorded = response.recorded
+			activeRunState.posted = response.table
 			// The attract screen and /ranking read the same board; drop their
 			// server-loaded copies so neither shows the table without this run.
 			void invalidateAll()
@@ -373,18 +363,22 @@
 					</div>
 				</dl>
 
-				{#if recorded}
+				{#if activeRunState.recorded}
 					<!-- The recorded figures, not the run's own tally: the server
 					     regraded every answer, and this is what the board now holds. -->
 					<p class="ranked hud glow-green">
 						ENTRY RECORDED
-						{#if recorded.rank !== null}
-							— {recorded.rank}<span class="ord">{ordinal(recorded.rank)}</span>
+						{#if activeRunState.recorded.rank !== null}
+							— {activeRunState.recorded.rank}<span class="ord"
+								>{ordinal(activeRunState.recorded.rank)}</span
+							>
 						{/if}
 					</p>
-					{#if recorded.score !== run.score}
+					{#if activeRunState.recorded.score !== run.score}
 						<p class="regraded hud">
-							SERVER SCORE <span class="glow-gold num">{recorded.score.toLocaleString()}</span>
+							SERVER SCORE <span class="glow-gold num"
+								>{activeRunState.recorded.score.toLocaleString()}</span
+							>
 						</p>
 					{/if}
 					<a class="cta hud" href={resolve('/ranking')}>VIEW RANKING</a>
@@ -399,7 +393,7 @@
 							<span class="visually-hidden">Name for the ranking, up to {NAME_MAX} characters</span>
 							<input
 								class="entry-input hud"
-								bind:value={name}
+								bind:value={activeRunState.name}
 								maxlength={NAME_MAX}
 								autocomplete="off"
 								spellcheck="false"
@@ -415,7 +409,11 @@
 						</div>
 
 						<div class="commit">
-							<button class="cta ghost hud" onclick={backspace} disabled={name.length === 0}>
+							<button
+								class="cta ghost hud"
+								onclick={backspace}
+								disabled={activeRunState.name.length === 0}
+							>
 								DEL
 							</button>
 							<button class="cta hud" onclick={finish} disabled={!canSubmit}>
@@ -437,7 +435,8 @@
 				{/if}
 
 				<div class="again">
-					<button class="cta ghost hud" onclick={() => run.reset()}>CONTINUE?</button>
+					<a class="cta ghost hud" href={resolve('/review')}>REVIEW</a>
+					<button class="cta ghost hud" onclick={resetActiveRun}>CONTINUE?</button>
 					<a class="back hud" href={resolve('/')}>← TITLE</a>
 				</div>
 			</section>
@@ -1084,6 +1083,7 @@
 		font-size: 0.85rem;
 	}
 	.again {
+		width: 100%;
 		display: flex;
 		align-items: center;
 		gap: 18px;

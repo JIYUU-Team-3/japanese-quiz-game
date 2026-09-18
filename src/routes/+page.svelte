@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths'
 	import { onMount } from 'svelte'
+	import { resetActiveRun } from '#lib/game/run.svelte.js'
 	import type { PageData } from './$types'
 
 	let { data }: { data: PageData } = $props()
@@ -47,7 +48,7 @@
 
 			<p class="tagline readable glow-beam">語彙と文法。１問１０秒。ミス３回で終了。</p>
 
-			<a class="start hud" href={resolve('/play')}>
+			<a class="start hud" href={resolve('/play')} onclick={resetActiveRun}>
 				<span class="blink">PUSH START</span>
 			</a>
 
