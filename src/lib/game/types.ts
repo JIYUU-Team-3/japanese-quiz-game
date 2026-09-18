@@ -88,6 +88,16 @@ export interface Question {
 	choices: Choice[]
 }
 
+export interface ReviewItem {
+	question: Question
+	selectedChoice: Choice | null
+	correctChoice: Choice
+	isCorrect: boolean
+	timedOut: boolean
+	answerMs: number
+	roundNumber?: number
+}
+
 /**
  * One answered question, as the run logs it. Maps onto a `session_answers` row.
  *
