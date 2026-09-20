@@ -197,7 +197,6 @@
 <style>
 	.review {
 		--pad: clamp(16px, 3.4vw, 40px);
-		height: min(760px, calc(100dvh - 56px));
 	}
 
 	.num {
@@ -301,6 +300,8 @@
 	.filters {
 		display: flex;
 		gap: 8px;
+		flex-wrap: wrap;
+		justify-content: center;
 	}
 
 	.filter {
@@ -375,6 +376,8 @@
 		letter-spacing: 0.14em;
 		border-bottom: 1px solid #1c2340;
 		padding-bottom: 6px;
+		flex-wrap: wrap;
+		gap: 6px;
 	}
 
 	.q-meta {
@@ -567,5 +570,34 @@
 	.back:hover,
 	.back:focus-visible {
 		color: var(--beam);
+	}
+
+	@media (max-width: 480px) {
+		.summary-card {
+			padding: 8px 6px;
+		}
+		.stat-label {
+			font-size: 10px;
+			letter-spacing: 0.08em;
+		}
+		.stat-value {
+			font-size: 1.15rem;
+		}
+		.summary-divider {
+			height: 22px;
+		}
+		.q-card {
+			padding: 12px 14px;
+		}
+		.q-prompt {
+			font-size: 1.05rem;
+		}
+		.actions {
+			gap: 12px;
+		}
+		.cta {
+			padding: 10px 20px;
+			font-size: 0.88rem;
+		}
 	}
 </style>

@@ -260,11 +260,28 @@ for (const vp of VIEWPORTS) {
 		})
 
 		test('no screen scrolls sideways', async ({ page }) => {
-			for (const path of ['/', '/play', '/ranking', '/credit']) {
+			for (const path of ['/', '/play', '/ranking', '/credit', '/review']) {
 				await page.goto(path)
 				await expect(page.locator('main.screen')).toBeVisible()
 				const c = await chrome(page)
 				expect(c.overflowPx, `${path} scrolls sideways by ${c.overflowPx}px`).toBeLessThanOrEqual(0)
+			}
+		})
+
+		test('the cabinet screen dimensions are identical across all pages', async ({ page }) => {
+			const paths = ['/', '/play', '/ranking', '/credit', '/review']
+			const readings: { label: string; chrome: Chrome }[] = []
+			for (const path of paths) {
+				await page.goto(path)
+				await expect(page.locator('main.screen')).toBeVisible()
+				readings.push({ label: path, chrome: await chrome(page) })
+			}
+			const first = readings[0]
+			for (const r of readings.slice(1)) {
+				expect(
+					r.chrome.screen,
+					`screen geometry differs between "${first.label}" and "${r.label}"`,
+				).toEqual(first.chrome.screen)
 			}
 		})
 	})
