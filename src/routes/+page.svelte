@@ -234,7 +234,7 @@
 		margin: 0;
 		padding: 0;
 		display: grid;
-		grid-template-columns: 1fr 1fr;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
 		gap: 6px 14px;
 		font-size: clamp(0.72rem, 2.2vw, 0.86rem);
 		color: var(--dim);
@@ -327,12 +327,6 @@
 	}
 	.credit b {
 		font-weight: inherit;
-	}
-
-	@media (max-width: 520px) {
-		.demo-choices {
-			grid-template-columns: 1fr;
-		}
 	}
 
 	/* The marquee is one line on a phone or it is nothing: a score readout that
