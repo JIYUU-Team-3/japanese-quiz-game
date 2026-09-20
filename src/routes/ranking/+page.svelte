@@ -73,7 +73,7 @@
 
 		<div class="body">
 			<h1 class="head hud glow-gold">RANKING</h1>
-			<p class="sub readable">ハイスコアランキング</p>
+			<p class="sub hud glow-beam">ハイスコアランキング</p>
 
 			<div class="filters hud" role="group" aria-label="Filter by course">
 				{#each FILTERS as f (f)}
