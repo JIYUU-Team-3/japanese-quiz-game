@@ -619,6 +619,10 @@
 	/* ── Course select ── */
 	.select {
 		flex: 1;
+		/* Scrolls inside the tube: the screen is a fixed rectangle now, so a
+		   phase taller than the glass must overrun here, not push the frame. */
+		min-height: 0;
+		overflow-y: auto;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
@@ -687,6 +691,7 @@
 	.round {
 		flex: 1;
 		min-height: 0;
+		overflow-y: auto;
 		display: flex;
 		flex-direction: column;
 		gap: clamp(14px, 2.4vw, 20px);
@@ -921,6 +926,10 @@
 	/* ── Game over ── */
 	.over {
 		flex: 1;
+		/* Scrolls inside the tube: the screen is a fixed rectangle now, so a
+		   phase taller than the glass must overrun here, not push the frame. */
+		min-height: 0;
+		overflow-y: auto;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
