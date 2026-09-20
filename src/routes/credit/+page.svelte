@@ -132,7 +132,7 @@
 <div class="cabinet">
 	<main class="screen members">
 		<header class="bar hud">
-			<a class="back" href={resolve('/')}>← TITLE</a>
+			<a class="back" href={resolve('/')} aria-label="Title screen">←</a>
 			<span class="glow-beam">MEMBER CONTRIBUTIONS</span>
 		</header>
 
@@ -187,15 +187,16 @@
 		align-items: center;
 		justify-content: space-between;
 		gap: 12px;
-		padding: 12px var(--pad);
+		padding: 14px var(--pad);
 		border-bottom: var(--rule) solid #1c2340;
-		font-size: clamp(10px, 1.5vw, 12px);
+		font-size: clamp(11px, 1.5vw, 14px);
 		letter-spacing: 0.16em;
 	}
 	.back {
 		color: var(--dim);
 		text-decoration: none;
 		white-space: nowrap;
+		line-height: 1;
 	}
 	.back:hover,
 	.back:focus-visible {

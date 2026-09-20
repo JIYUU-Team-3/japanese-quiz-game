@@ -22,7 +22,7 @@ test('the CREDIT readout on the title screen reaches the members roll, and TITLE
 		await expect(page.getByRole('heading', { name, exact: true })).toBeAttached()
 	}
 
-	await page.getByRole('link', { name: '← TITLE' }).click()
+	await page.locator('header a.back').click()
 	await expect(page).toHaveURL(/\/$/)
 })
 
