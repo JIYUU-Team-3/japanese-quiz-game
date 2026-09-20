@@ -128,7 +128,6 @@
 <style>
 	.ranking {
 		--pad: clamp(16px, 3.4vw, 40px);
-		height: min(760px, calc(100dvh - 56px));
 	}
 	.num {
 		font-variant-numeric: tabular-nums;
@@ -248,6 +247,12 @@
 		background: rgb(255 196 0 / 0.07);
 	}
 	.row .lv,
+	.row .name {
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
 	.row .solved,
 	.row .streak {
 		color: var(--dim);
@@ -301,6 +306,15 @@
 		.row .solved,
 		.row .streak {
 			display: none;
+		}
+	}
+
+	@media (max-width: 380px) {
+		.row {
+			grid-template-columns: 2.4rem 1fr 2.2rem 4.8rem;
+			gap: 6px;
+			padding: 4px 6px;
+			font-size: 0.76rem;
 		}
 	}
 </style>

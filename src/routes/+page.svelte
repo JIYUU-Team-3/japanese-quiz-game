@@ -137,6 +137,10 @@
 
 	.stage {
 		flex: 1;
+		/* Scrolls inside the tube: the screen is a fixed rectangle now, so a
+		   phase taller than the glass must overrun here, not push the frame. */
+		min-height: 0;
+		overflow-y: auto;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
