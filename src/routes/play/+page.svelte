@@ -495,9 +495,9 @@
 		display: flex;
 		align-items: center;
 		gap: clamp(12px, 3vw, 34px);
-		padding: 12px var(--pad);
+		padding: 14px var(--pad);
 		border-bottom: var(--rule) solid #1c2340;
-		font-size: clamp(10px, 1.5vw, 13px);
+		font-size: clamp(11px, 1.5vw, 14px);
 		flex-wrap: wrap;
 	}
 	.slot {

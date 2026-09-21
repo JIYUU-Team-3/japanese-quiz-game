@@ -207,9 +207,9 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		padding: 12px var(--pad);
+		padding: 14px var(--pad);
 		border-bottom: var(--rule) solid #1c2340;
-		font-size: clamp(10px, 1.5vw, 12px);
+		font-size: clamp(11px, 1.5vw, 14px);
 		letter-spacing: 0.16em;
 		flex-shrink: 0;
 	}
@@ -217,10 +217,10 @@
 	.back-btn {
 		background: transparent;
 		border: none;
-		padding: 4px 8px;
+		padding: 0;
 		color: var(--dim);
 		font-family: inherit;
-		font-size: clamp(14px, 2vw, 18px);
+		font-size: inherit;
 		line-height: 1;
 		cursor: pointer;
 		display: inline-flex;
