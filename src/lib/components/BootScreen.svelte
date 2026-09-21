@@ -28,9 +28,12 @@
 	 * reached. An overlay that only covers still hands keyboard focus to the
 	 * links behind it.
 	 *
-	 * ⚠ Drawn in the system monospace, never `--font-dot`. This is the screen
-	 * that is up *because* the two faces have not arrived; dressing it in one
-	 * would make it the first thing to reflow when they do.
+	 * ⚠ The prompt and the bar are drawn in the system monospace, never
+	 * `--font-dot`: this is the screen that is up *because* the two faces have
+	 * not arrived, and dressing them in one would make them the first thing to
+	 * reflow when it did. The title is the one exception — it is the homepage's
+	 * 日本語アタック in DotGothic16 — and it earns that by staying dark until its
+	 * own seven glyphs have loaded. See `titleLit`.
 	 */
 	import { onMount } from 'svelte'
 	import { musicProgress, powerOn, unlockAudio } from '#lib/game/sound.svelte.js'
@@ -104,6 +107,16 @@
 	 * that fade should carry the prompt out, not flash a bar reading 100%.
 	 */
 	let barShown = $state(false)
+	/**
+	 * Whether the title's face has landed.
+	 *
+	 * The title is held at zero opacity until then and fades in after, so the
+	 * player sees it arrive once in the dot face instead of drawn in a fallback
+	 * and swapped. Opacity rather than `{#if}`, so the prompt below does not
+	 * move when it lights. Only DotGothic16 for these seven glyphs gates it,
+	 * which is one small subset: it lights long before the whole load is done.
+	 */
+	let titleLit = $state(false)
 	let fontsReady = $state(false)
 	let musicAt = $state(0)
 	let pressedAt = 0
@@ -161,8 +174,14 @@
 		// CSS is subset by `unicode-range`, so a face is only fetched once a glyph
 		// in its range is used, and `ready` can resolve before that has happened.
 		if (document.fonts) {
+			const title = document.fonts
+				.load('1rem DotGothic16', '日本語アタック')
+				.catch(() => undefined)
+				// A face that will not load lights the title in the fallback rather
+				// than leaving the gate without a name.
+				.then(() => (titleLit = true))
 			void Promise.all([
-				document.fonts.load('1rem DotGothic16', '日本語アタック'),
+				title,
 				document.fonts.load('1rem "BIZ UDPGothic"', 'あア亜'),
 				document.fonts.ready,
 			])
@@ -170,6 +189,7 @@
 				// A face that will not load costs its own legibility, not the boot.
 				.then(() => (fontsReady = true))
 		} else {
+			titleLit = true
 			fontsReady = true
 		}
 
@@ -208,7 +228,8 @@
 		style:--fade="{FADE_MS}ms"
 	>
 		<div class="plate">
-			<p class="mark">NIHONGO ATTACK</p>
+			<!-- `lang` so a fallback, if it ever shows, picks Japanese glyph forms. -->
+			<p class="mark" class:lit={titleLit} lang="ja">日本語アタック</p>
 			<div class="slot">
 				{#if !barShown}
 					{#if running}
@@ -298,13 +319,23 @@
 		inset: 0;
 	}
 
+	/* The homepage's `.title-ja`, set the same so the reveal lands the title on
+	   the name the player has just been looking at. */
 	.mark {
 		margin: 0;
+		font-family: var(--font-dot);
+		font-size: clamp(2.2rem, 7.4vw, 4.4rem);
+		line-height: 1;
+		letter-spacing: 0.06em;
+		text-indent: 0.06em;
+		text-transform: none;
 		color: var(--gold);
-		font-size: clamp(0.9rem, 4vw, 1.4rem);
-		letter-spacing: 0.42em;
-		text-indent: 0.42em;
-		text-shadow: var(--bloom) rgb(255 196 0 / 0.5);
+		text-shadow: var(--bloom) rgb(255 196 0 / 0.55);
+		opacity: 0;
+		transition: opacity 320ms ease-out;
+	}
+	.mark.lit {
+		opacity: 1;
 	}
 
 	.bar {
@@ -343,6 +374,7 @@
 		/* The global rule already collapses the durations; this keeps the fill
 		   from being the one thing that still slides. */
 		.fill,
+		.mark,
 		.boot {
 			transition: none;
 		}

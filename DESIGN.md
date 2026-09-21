@@ -71,11 +71,13 @@ choice for CJK: self-hosting the full glyph sets would cost megabytes.
   lets the cabinet make no sound until the player has touched it; asking for that press up front
   means the title screen arrives with its music instead of silent. A tap anywhere or any key counts,
   except browser shortcuts and Escape. Loading starts behind the gate, so a player who pauses on it
-  usually finds everything ready and never sees a bar. Deliberately drawn in the _system_ monospace,
-  never `DotGothic16`: it is on screen precisely because that face has not arrived, and dressing it
-  in one would make it the first thing to reflow. Server-rendered, so it is in the HTML rather than
-  mounted over a screen the player has already seen; the prompt itself waits for hydration, so it
-  never offers a press that would go nowhere.
+  usually finds everything ready and never sees a bar. Its title is the homepage's 日本語アタック,
+  set exactly as `.title-ja`, so the reveal lands on the name the player was already looking at. It
+  stays dark until DotGothic16 has loaded those seven glyphs, then fades in, so it never shows in a
+  fallback and swaps. The prompt and the bar stay in the _system_ monospace: they are on screen
+  precisely because the faces may not have arrived, and must not be the first thing to reflow.
+  Server-rendered, so it is in the HTML rather than mounted over a screen the player has already
+  seen; the prompt itself waits for hydration, so it never offers a press that would go nowhere.
 - `.cabinet` — the room. Radial lift over `--void`, centres the screen.
 - `.screen` — the tube. Flex column, `min-height: min(760px, 100dvh - 56px)`, owns the scanlines.
 - `.hud` / `.readable` — the two type roles.
