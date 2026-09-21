@@ -114,6 +114,11 @@ jobs:
       - name: Migrate and seed the local database
         run: pnpm run db:reset:local
       - run: pnpm exec playwright test
+      - name: Dump Wrangler logs on failure
+        if: failure()
+        run: |
+          echo "=== Wrangler logs ==="
+          cat ~/.config/.wrangler/logs/*.log || true
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:

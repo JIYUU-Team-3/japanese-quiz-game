@@ -7,7 +7,7 @@
 	"scripts": {
 		"dev": "vite dev",
 		"build": "wrangler types && vite build",
-		"preview": "wrangler dev .svelte-kit/cloudflare/_worker.js --port 4173",
+		"preview": "wrangler dev .svelte-kit/cloudflare/_worker.js --ip 127.0.0.1 --port 4173",
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "pnpm run gen:i18n && wrangler types && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "pnpm run gen:i18n && wrangler types && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
@@ -17,7 +17,7 @@
 		"test:unit": "vitest",
 		"test": "npm run test:unit -- --run && npm run test:e2e",
 		"test:e2e": "playwright install && playwright test",
-		"preview:ci": "wrangler dev .svelte-kit/cloudflare/_worker.js --local --port 4173",
+		"preview:ci": "wrangler dev .svelte-kit/cloudflare/_worker.js --local --ip 127.0.0.1 --port 4173",
 		"gen": "wrangler types",
 		"gen:i18n": "paraglide-js compile --project ./project.inlang --outdir ./src/lib/paraglide --emit-ts-declarations",
 		"db:push": "drizzle-kit push",
