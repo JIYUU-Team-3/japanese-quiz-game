@@ -83,6 +83,7 @@
 	let sending = $state(false)
 	let loadError = $state<string | null>(null)
 	let submitError = $state<string | null>(null)
+	let nameInputEl: HTMLInputElement | undefined = $state()
 
 	const hiScore = $derived(table[0]?.score ?? 0)
 	const seconds = $derived(Math.ceil(run.remaining / 1000))
@@ -173,6 +174,10 @@
 				run.next()
 			}
 			return
+		}
+		if (run.phase === 'over') {
+			if (event.ctrlKey || event.metaKey || event.altKey) return
+			if (document.activeElement !== nameInputEl) nameInputEl?.focus()
 		}
 		if (run.phase !== 'asking' || !run.current) return
 		const key = event.key.toUpperCase()
@@ -420,6 +425,7 @@
 						<label class="entry-field">
 							<span class="visually-hidden">Name for the ranking, up to {NAME_MAX} characters</span>
 							<input
+								bind:this={nameInputEl}
 								class="entry-input hud"
 								bind:value={activeRunState.name}
 								maxlength={NAME_MAX}
@@ -1128,6 +1134,9 @@
 			grid-template-columns: 1fr;
 		}
 		.pad {
+			visibility: collapse;
+			height: 0;
+			width: 0;
 			grid-template-columns: repeat(9, minmax(0, 1fr));
 		}
 	}
