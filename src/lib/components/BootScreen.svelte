@@ -28,12 +28,13 @@
 	 * reached. An overlay that only covers still hands keyboard focus to the
 	 * links behind it.
 	 *
-	 * ⚠ The prompt and the bar are drawn in the system monospace, never
-	 * `--font-dot`: this is the screen that is up *because* the two faces have
-	 * not arrived, and dressing them in one would make them the first thing to
-	 * reflow when it did. The title is the one exception — it is the homepage's
-	 * 日本語アタック in DotGothic16 — and it earns that by staying dark until its
-	 * own seven glyphs have loaded. See `titleLit`.
+	 * ⚠ The title and the prompt are the homepage's own — 日本語アタック and the
+	 * PUSH START lettering, both in DotGothic16 — on a screen that is up
+	 * *because* the faces may not have arrived yet. They earn that by staying
+	 * dark until DotGothic16 has loaded their glyphs, so they arrive once in the
+	 * dot face rather than drawn in a fallback and swapped. See `faceLit`. The
+	 * bar and its readout, which only show once loading is under way, stay in
+	 * the system monospace.
 	 */
 	import { onMount } from 'svelte'
 	import { musicProgress, powerOn, unlockAudio } from '#lib/game/sound.svelte.js'
@@ -108,15 +109,16 @@
 	 */
 	let barShown = $state(false)
 	/**
-	 * Whether the title's face has landed.
+	 * Whether DotGothic16 has landed for the title and the prompt.
 	 *
-	 * The title is held at zero opacity until then and fades in after, so the
-	 * player sees it arrive once in the dot face instead of drawn in a fallback
-	 * and swapped. Opacity rather than `{#if}`, so the prompt below does not
-	 * move when it lights. Only DotGothic16 for these seven glyphs gates it,
-	 * which is one small subset: it lights long before the whole load is done.
+	 * Both are held at zero opacity until then and fade in after, so the player
+	 * sees them arrive once in the dot face instead of drawn in a fallback and
+	 * swapped. Opacity rather than `{#if}`: nothing moves when they light, and
+	 * the prompt stays a real control the whole time, so a tap in that instant
+	 * is still a press. Only the dot face for these few glyphs gates it, a small
+	 * subset that lights long before the whole load is done.
 	 */
-	let titleLit = $state(false)
+	let faceLit = $state(false)
 	let fontsReady = $state(false)
 	let musicAt = $state(0)
 	let pressedAt = 0
@@ -174,14 +176,16 @@
 		// CSS is subset by `unicode-range`, so a face is only fetched once a glyph
 		// in its range is used, and `ready` can resolve before that has happened.
 		if (document.fonts) {
-			const title = document.fonts
-				.load('1rem DotGothic16', '日本語アタック')
+			// The title's kana and kanji and the prompt's Latin sit in different
+			// `unicode-range` subsets, so both are named here or only one is fetched.
+			const dot = document.fonts
+				.load('1rem DotGothic16', '日本語アタック PRESS ANY BUTTON')
 				.catch(() => undefined)
-				// A face that will not load lights the title in the fallback rather
-				// than leaving the gate without a name.
-				.then(() => (titleLit = true))
+				// A face that will not load lights the gate in the fallback rather
+				// than leaving it blank.
+				.then(() => (faceLit = true))
 			void Promise.all([
-				title,
+				dot,
 				document.fonts.load('1rem "BIZ UDPGothic"', 'あア亜'),
 				document.fonts.ready,
 			])
@@ -189,7 +193,7 @@
 				// A face that will not load costs its own legibility, not the boot.
 				.then(() => (fontsReady = true))
 		} else {
-			titleLit = true
+			faceLit = true
 			fontsReady = true
 		}
 
@@ -229,11 +233,11 @@
 	>
 		<div class="plate">
 			<!-- `lang` so a fallback, if it ever shows, picks Japanese glyph forms. -->
-			<p class="mark glow-gold" class:lit={titleLit} lang="ja">日本語アタック</p>
+			<p class="mark glow-gold" class:lit={faceLit} lang="ja">日本語アタック</p>
 			<div class="slot">
 				{#if !barShown}
 					{#if running}
-						<button class="gate" onclick={press}>
+						<button class="gate" class:lit={faceLit} onclick={press}>
 							<span class="blink">PRESS ANY BUTTON</span>
 						</button>
 					{/if}
@@ -296,19 +300,27 @@
 		min-height: 58px;
 	}
 
+	/* Lettered as the homepage's PUSH START (`.start hud`), so the prompt and the
+	   button it leads to read as the same machine. */
 	.gate {
 		appearance: none;
 		margin: 0;
 		padding: 8px 12px;
 		border: 0;
 		background: none;
-		font: inherit;
-		letter-spacing: inherit;
-		text-indent: inherit;
-		text-transform: inherit;
+		font-family: var(--font-dot);
+		font-size: clamp(1rem, 3vw, 1.35rem);
+		letter-spacing: 0.2em;
+		text-indent: 0.2em;
+		text-transform: uppercase;
 		color: var(--beam);
 		text-shadow: var(--bloom) rgb(200 220 255 / 0.35);
 		cursor: pointer;
+		opacity: 0;
+		transition: opacity 320ms ease-out;
+	}
+	.gate.lit {
+		opacity: 1;
 	}
 	/* Stretched over the whole boot screen, so a tap anywhere is the press —
 	   "any button" — while there is still one real, focusable control for the
@@ -374,6 +386,7 @@
 		   from being the one thing that still slides. */
 		.fill,
 		.mark,
+		.gate,
 		.boot {
 			transition: none;
 		}

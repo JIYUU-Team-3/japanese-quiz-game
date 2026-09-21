@@ -72,10 +72,10 @@ choice for CJK: self-hosting the full glyph sets would cost megabytes.
   means the title screen arrives with its music instead of silent. A tap anywhere or any key counts,
   except browser shortcuts and Escape. Loading starts behind the gate, so a player who pauses on it
   usually finds everything ready and never sees a bar. Its title is the homepage's 日本語アタック,
-  set exactly as `.title-ja`, so the reveal lands on the name the player was already looking at. It
-  stays dark until DotGothic16 has loaded those seven glyphs, then fades in, so it never shows in a
-  fallback and swaps. The prompt and the bar stay in the _system_ monospace: they are on screen
-  precisely because the faces may not have arrived, and must not be the first thing to reflow.
+  set exactly as `.title-ja` with `.glow-gold`, and its prompt is lettered as `PUSH START`, so the
+  reveal lands on a machine the player was already looking at. Both stay dark until DotGothic16 has
+  loaded their glyphs, then fade in, so neither shows in a fallback and swaps. The loading bar's
+  readout stays in the _system_ monospace.
   Server-rendered, so it is in the HTML rather than mounted over a screen the player has already
   seen; the prompt itself waits for hydration, so it never offers a press that would go nowhere.
 - `.cabinet` — the room. Radial lift over `--void`, centres the screen.
