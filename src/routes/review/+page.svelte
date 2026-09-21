@@ -52,7 +52,6 @@
 			<button class="back-btn hud" type="button" onclick={goBack} aria-label="Previous screen"
 				>←</button
 			>
-			<span class="glow-beam">REVIEW</span>
 			<span class="glow-gold num">{level ? `${level} COURSE` : 'RUN REVIEW'}</span>
 		</header>
 
