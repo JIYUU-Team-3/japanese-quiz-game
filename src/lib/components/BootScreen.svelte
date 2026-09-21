@@ -176,18 +176,24 @@
 		// CSS is subset by `unicode-range`, so a face is only fetched once a glyph
 		// in its range is used, and `ready` can resolve before that has happened.
 		if (document.fonts) {
+			const timeout = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 			// The title's kana and kanji and the prompt's Latin sit in different
 			// `unicode-range` subsets, so both are named here or only one is fetched.
-			const dot = document.fonts
-				.load('1rem DotGothic16', '日本語アタック PRESS ANY BUTTON')
+			const dot = Promise.race([
+				document.fonts.load('1rem DotGothic16', '日本語アタック PRESS ANY BUTTON'),
+				timeout(800),
+			])
 				.catch(() => undefined)
 				// A face that will not load lights the gate in the fallback rather
 				// than leaving it blank.
 				.then(() => (faceLit = true))
-			void Promise.all([
-				dot,
-				document.fonts.load('1rem "BIZ UDPGothic"', 'あア亜'),
-				document.fonts.ready,
+			void Promise.race([
+				Promise.all([
+					dot,
+					document.fonts.load('1rem "BIZ UDPGothic"', 'あア亜'),
+					document.fonts.ready,
+				]),
+				timeout(1500),
 			])
 				.catch(() => undefined)
 				// A face that will not load costs its own legibility, not the boot.
