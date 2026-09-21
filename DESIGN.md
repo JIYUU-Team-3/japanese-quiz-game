@@ -67,6 +67,12 @@ choice for CJK: self-hosting the full glyph sets would cost megabytes.
 
 ## Components
 
+- Boot screen — the cabinet powering on. Covers everything on a cold load until the two typefaces
+  and the landed screen's music track are ready, so the machine comes up once rather than swapping
+  faces and stuttering its theme in front of the player. Deliberately drawn in the _system_
+  monospace, never `DotGothic16`: it is on screen precisely because that face has not arrived, and
+  dressing it in one would make it the first thing to reflow. Server-rendered, so it is in the HTML
+  rather than mounted over a screen the player has already seen.
 - `.cabinet` — the room. Radial lift over `--void`, centres the screen.
 - `.screen` — the tube. Flex column, `min-height: min(760px, 100dvh - 56px)`, owns the scanlines.
 - `.hud` / `.readable` — the two type roles.
@@ -78,6 +84,11 @@ choice for CJK: self-hosting the full glyph sets would cost megabytes.
 
 One authored moment per surface, not scattered effects.
 
+- Boot: a gold bar ruled into lamps fills against real progress — the typefaces are worth 30% of
+  it and the music track the rest, read from the element's own buffer — then the whole screen fades
+  out over 420ms onto the cabinet behind it. Held for a minimum of 700ms so a warm reload reads as
+  a machine starting rather than a flicker, and released after 8s regardless, because the game is
+  completely playable in silence and a slow theme must never lock a player out of it.
 - Attract: `PUSH START` blinks on a 1.06s step; the demo question cycles every 3.2s.
 - Round: the timer bar is the motion — a `scaleX` transform driven by `requestAnimationFrame`,
   turning red under three seconds. Time is never the only channel: a numeric readout runs beside it.
@@ -108,6 +119,8 @@ Numerals are `tabular-nums` everywhere a value changes.
 ## Known gaps
 
 - No `prefers-contrast` handling.
+- Time-based motion on a screen runs while the boot screen is still over it, so a player who deep-
+  links to the members roll meets it a second or so in rather than at the top of the loop.
 - The scanline overlay is a fixed opacity with no user control.
 - The members roll has no dedicated pause control (WCAG 2.2.2). Scrolling by hand holds it for 2s,
   reduced motion stills it, and `← TITLE` is always reachable.

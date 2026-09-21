@@ -527,3 +527,38 @@ export function setMusic(cue: MusicCue): void {
 	}
 	bringIn(next)
 }
+
+/**
+ * How far the music the cabinet is currently asking for has loaded, 0 to 1.
+ *
+ * Read by the boot screen, which holds the cabinet dark until the first track
+ * can play without stalling. A theme that arrives in pieces under a title
+ * screen is worse than one that arrives a moment late.
+ *
+ * 1 means there is nothing left to wait for, which is not the same as "a track
+ * is loaded": a browser with no `Audio`, a player who has switched the music
+ * off, and a screen that asked for silence all report ready, because in none of
+ * those cases is anyone waiting on bytes.
+ *
+ * Deliberately polled rather than hung off `canplaythrough`. The caller wants a
+ * number every tick for its bar anyway, so an event would only be a second
+ * source of the same fact — and `canplaythrough` on an element that finished
+ * buffering before the listener attached never fires at all, which is exactly
+ * the case a reload out of cache produces.
+ */
+export function musicProgress(): number {
+	if (typeof Audio !== 'function' || musicMuted || !current) return 1
+	const el = players[current]
+	// `setMusic` builds the element. Until the effect that calls it has run
+	// there is nothing to measure, and nothing has started loading either.
+	if (!el) return 0
+	// HAVE_ENOUGH_DATA is the browser's own verdict that it can play to the end
+	// without stopping, which is the question being asked here. Buffered bytes
+	// below only stand in for it while it is still making up its mind.
+	if (el.readyState >= 4) return 1
+	const { duration, buffered } = el
+	if (!Number.isFinite(duration) || duration <= 0 || buffered.length === 0) return 0
+	// Held under 1 so that `readyState` above stays the only thing that can
+	// report ready: bytes on hand are not the same as bytes decoded.
+	return Math.min(buffered.end(buffered.length - 1) / duration, 0.99)
+}
