@@ -105,6 +105,13 @@ One authored moment per surface, not scattered effects.
   cell reads as the likelier answer and leaks a free hint. The choices grid uses equal `1fr` rows
   and identical styling; only state colour differentiates.
 - **Nothing is labelled twice.** No element repeats what another already tells the player.
+- **Every scrolling field centres with `justify-content: safe center`, never a bare `center`.** The
+  tube is a fixed rectangle, so each phase's field (`.stage`, `.select`, `.over`) scrolls inside it
+  — and a centred field that overruns is pushed past _both_ edges, where the overflow above the
+  start edge can never be scrolled back to. That silently ate `GAME OVER` on an iPhone SE and the
+  title lockup at 320px. `safe` centres while it fits and falls back to the top edge when it does
+  not; a browser that does not know the keyword drops the declaration and lands on `flex-start`,
+  which is the same escape.
 - The round splits into a pinned HUD strip and a centred main block that fills the frame; the
   verdict area reserves its height so feedback never shifts the layout under a player's finger.
 - Answer blanks (`＿＿＿`) are wrapped `white-space: nowrap` so they never break across lines.

@@ -216,6 +216,24 @@ for (const vp of VIEWPORTS) {
 			await expect(page.getByRole('heading', { name: /RANK IN/ })).toBeVisible()
 			const atOver = await chrome(page)
 
+			// GAME OVER must still be on the screen that announces it.
+			//
+			// A centred field that overruns is pushed past both its edges, and the
+			// overflow at the top cannot be scrolled back to — which on this
+			// viewport silently ate the heading and opened the phase on the SCORE
+			// line. Checked against the *field's* top edge rather than the
+			// viewport's, because that is the boundary the clipping happens at:
+			// the heading was still inside the tube and still had a box, it was
+			// simply above the only part of the field anything can reach.
+			const overTop = (await page.locator('section.over').boundingBox())!.y
+			const head = page.getByRole('heading', { name: 'GAME OVER' })
+			await expect(head).toBeVisible()
+			const headBox = (await head.boundingBox())!
+			expect(
+				headBox.y,
+				'GAME OVER is clipped above the top of the scrollable field',
+			).toBeGreaterThanOrEqual(overTop - 1)
+
 			// ENTER is the one control that must never be out of reach: it is how a
 			// run gets onto the board. Reaching it may scroll the field, but must
 			// not move the frame.
