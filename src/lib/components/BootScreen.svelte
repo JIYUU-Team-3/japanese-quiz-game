@@ -2,12 +2,22 @@
 	/**
 	 * The cabinet powering on.
 	 *
-	 * The attract screen is rendered whole on the server precisely so there is no
-	 * `LOADING…` frame between arriving and seeing the machine — but two things
-	 * arrive after that HTML does and both of them are visible when they land.
-	 * The two typefaces swap under the title, and the theme it asked for starts
-	 * mid-phrase or stutters on the way in. This holds the tube dark until the
-	 * pair of them are ready, so the cabinet comes up once, whole.
+	 * Two jobs, in order. First the gate. A browser will not let this cabinet
+	 * make a sound until the player has touched it, so rather than bring the
+	 * title screen up silent and wait for whatever they happen to press first,
+	 * the press is asked for up front — PRESS ANY BUTTON — and that press is the
+	 * one that opens the audio. Everything after it can then arrive with sound.
+	 *
+	 * Then the load. The attract screen is rendered whole on the server so there
+	 * is no `LOADING…` frame between arriving and seeing it, but two things arrive
+	 * after that HTML and both are visible when they land: the two typefaces swap
+	 * under the title, and its theme stutters in. The screen stays covered until
+	 * both are ready, so the cabinet comes up once, whole, with its music fading
+	 * in as it does.
+	 *
+	 * Loading starts at mount, not at the press: time at the gate is time the
+	 * load gets for free. A player who reads the gate before pressing usually
+	 * finds it finished and never sees the bar at all.
 	 *
 	 * Rendered on the server too, and not only after hydration. Mounting it
 	 * client-side would show the attract screen first and then cover it, which is
@@ -23,21 +33,22 @@
 	 * would make it the first thing to reflow when they do.
 	 */
 	import { onMount } from 'svelte'
-	import { musicProgress } from '#lib/game/sound.svelte.js'
+	import { musicProgress, powerOn, unlockAudio } from '#lib/game/sound.svelte.js'
 
 	let { children } = $props()
 
 	/**
-	 * The shortest time the boot screen is allowed to be up.
+	 * The shortest time the bar stays up once it has had to appear.
 	 *
-	 * A warm reload has both the fonts and the theme in cache and would otherwise
-	 * flash this for two frames, which reads as a glitch rather than a machine
-	 * starting. Held long enough to be one deliberate beat.
+	 * Measured from the press. A load that finishes a moment after it would
+	 * otherwise flash the bar for two frames, which reads as a glitch rather than
+	 * a machine starting. A load that finished *before* the press skips the bar
+	 * outright and is not held at all.
 	 */
-	const FLOOR_MS = 700
+	const FLOOR_MS = 500
 
 	/**
-	 * The longest anything gets to hold the cabinet dark.
+	 * The longest the bar gets to hold the cabinet dark after the press.
 	 *
 	 * Nothing on screen is load-bearing on sound — the game is completely
 	 * playable in silence — so a theme still crawling in over a bad connection
@@ -64,28 +75,85 @@
 	const FADE_MS = 420
 
 	/**
+	 * Keys that are not a press: they only modify another key, or move focus, or
+	 * — Escape — do not count as the player acting on the page at all, so a
+	 * browser would still refuse the sound they were meant to unlock.
+	 */
+	const NOT_A_PRESS = new Set(['Tab', 'Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'Escape'])
+
+	/**
 	 * Whether this is running at all.
 	 *
 	 * The overlay is server-rendered but the `inert` below is not, because CSS
 	 * can hide an element and cannot un-inert one: with scripting off, an
 	 * `inert` in the HTML would be permanent and the whole game unreachable
 	 * behind a boot screen `app.html` has already hidden. Set from `onMount`, so
-	 * it is only ever true where something exists to turn it off again.
+	 * it is only ever true where something exists to turn it off again. It also
+	 * holds the prompt back until there is script to answer it: a press on the
+	 * server-rendered gate before hydration would go nowhere.
 	 */
 	let running = $state(false)
+	/**
+	 * Where the boot has got to. `leaving` is still painted but no longer
+	 * covering; `done` has left the DOM rather than sitting in it transparent.
+	 */
+	let phase = $state<'gate' | 'loading' | 'leaving' | 'done'>('gate')
+	/**
+	 * Whether the bar has been shown. Separate from `phase` because a press that
+	 * finds the load already done goes straight from the gate to the reveal, and
+	 * that fade should carry the prompt out, not flash a bar reading 100%.
+	 */
+	let barShown = $state(false)
 	let fontsReady = $state(false)
 	let musicAt = $state(0)
-	/** Fading out: still painted, no longer covering. */
-	let leaving = $state(false)
-	/** Gone. The overlay leaves the DOM rather than sitting in it transparent. */
-	let done = $state(false)
+	let pressedAt = 0
+	let poll: ReturnType<typeof setInterval> | undefined
+	let reveal: ReturnType<typeof setTimeout> | undefined
 
 	const progress = $derived((fontsReady ? FONT_SHARE : 0) + musicAt * (1 - FONT_SHARE))
 	const percent = $derived(Math.round(progress * 100))
 
+	function ready(): boolean {
+		// Clamped upward only. Browsers are free to evict what they have buffered,
+		// and a bar that runs backwards looks broken even when the number under it
+		// is honest.
+		musicAt = Math.max(musicAt, musicProgress())
+		return fontsReady && musicAt >= 1
+	}
+
+	function leave() {
+		clearInterval(poll)
+		phase = 'leaving'
+		// With the reveal, not after it: the track's fade-in is longer than the
+		// screen's, so the two arrive together and the music finishes settling
+		// over a cabinet that is already there.
+		powerOn()
+		reveal = setTimeout(() => (phase = 'done'), FADE_MS)
+	}
+
+	function press() {
+		if (phase !== 'gate' || !running) return
+		// Called here, inside the gesture, rather than left to the layout's own
+		// handler for every press: this is the press that exists for it.
+		unlockAudio()
+		pressedAt = performance.now()
+		if (ready()) return leave()
+		phase = 'loading'
+		barShown = true
+	}
+
+	function onKey(event: KeyboardEvent) {
+		if (phase !== 'gate' || event.repeat) return
+		// A shortcut is the browser's, not the cabinet's: a reload or a new tab
+		// must not be swallowed as a press.
+		if (event.metaKey || event.ctrlKey || event.altKey || NOT_A_PRESS.has(event.key)) return
+		// Enter or Space on the focused gate would otherwise also fire its click,
+		// and Space would scroll whatever is behind.
+		event.preventDefault()
+		press()
+	}
+
 	onMount(() => {
-		const startedAt = performance.now()
-		let reveal: ReturnType<typeof setTimeout> | undefined
 		running = true
 
 		// The two faces are asked for by name and by the characters that actually
@@ -105,17 +173,13 @@
 			fontsReady = true
 		}
 
-		const poll = setInterval(() => {
-			// Clamped upward only. Browsers are free to evict what they have
-			// buffered, and a bar that runs backwards looks broken even when the
-			// number under it is honest.
-			musicAt = Math.max(musicAt, musicProgress())
-			const waited = performance.now() - startedAt
-			if (waited < FLOOR_MS) return
-			if (!((fontsReady && musicAt >= 1) || waited >= CEILING_MS)) return
-			clearInterval(poll)
-			leaving = true
-			reveal = setTimeout(() => (done = true), FADE_MS)
+		// Polled from mount and not from the press, so the bar is already honest
+		// the moment it appears.
+		poll = setInterval(() => {
+			const loaded = ready()
+			if (phase !== 'loading') return
+			const waited = performance.now() - pressedAt
+			if ((loaded && waited >= FLOOR_MS) || waited >= CEILING_MS) leave()
 		}, POLL_MS)
 
 		return () => {
@@ -125,29 +189,47 @@
 	})
 </script>
 
+<svelte:window onkeydown={onKey} />
+
 <!-- `display: contents` so the cabinet below still measures itself against the
      viewport and not against a wrapper. -->
-<div style="display: contents" inert={running && !done}>
+<div style="display: contents" inert={running && phase !== 'done'}>
 	{@render children()}
 </div>
 
-{#if !done}
+{#if phase !== 'done'}
 	<!-- The id is the handle `app.html` reaches for to hide this without
 	     scripting; a scoped class would not survive the build under that name. -->
-	<div id="boot-screen" class="boot" class:leaving aria-hidden={leaving} style:--fade="{FADE_MS}ms">
+	<div
+		id="boot-screen"
+		class="boot"
+		class:leaving={phase === 'leaving'}
+		aria-hidden={phase === 'leaving'}
+		style:--fade="{FADE_MS}ms"
+	>
 		<div class="plate">
 			<p class="mark">NIHONGO ATTACK</p>
-			<div
-				class="bar"
-				role="progressbar"
-				aria-label="Loading"
-				aria-valuemin={0}
-				aria-valuemax={100}
-				aria-valuenow={percent}
-			>
-				<span class="fill" style:width="{percent}%"></span>
+			<div class="slot">
+				{#if !barShown}
+					{#if running}
+						<button class="gate" onclick={press}>
+							<span class="blink">PRESS ANY BUTTON</span>
+						</button>
+					{/if}
+				{:else}
+					<div
+						class="bar"
+						role="progressbar"
+						aria-label="Loading"
+						aria-valuemin={0}
+						aria-valuemax={100}
+						aria-valuenow={percent}
+					>
+						<span class="fill" style:width="{percent}%"></span>
+					</div>
+					<p class="status">LOADING {percent}%</p>
+				{/if}
 			</div>
-			<p class="status">LOADING {percent}%</p>
 		</div>
 	</div>
 {/if}
@@ -181,6 +263,39 @@
 		letter-spacing: 0.3em;
 		text-indent: 0.3em;
 		font-size: clamp(10px, 2.2vw, 13px);
+	}
+
+	/* Holds the height of the bar and its readout, so swapping the prompt for
+	   them at the press does not move the title above. */
+	.slot {
+		display: grid;
+		justify-items: center;
+		align-content: start;
+		gap: 18px;
+		min-height: 58px;
+	}
+
+	.gate {
+		appearance: none;
+		margin: 0;
+		padding: 8px 12px;
+		border: 0;
+		background: none;
+		font: inherit;
+		letter-spacing: inherit;
+		text-indent: inherit;
+		text-transform: inherit;
+		color: var(--beam);
+		text-shadow: var(--bloom) rgb(200 220 255 / 0.35);
+		cursor: pointer;
+	}
+	/* Stretched over the whole boot screen, so a tap anywhere is the press —
+	   "any button" — while there is still one real, focusable control for the
+	   keyboard and for assistive technology to find. */
+	.gate::before {
+		content: '';
+		position: absolute;
+		inset: 0;
 	}
 
 	.mark {

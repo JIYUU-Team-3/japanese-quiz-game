@@ -67,12 +67,15 @@ choice for CJK: self-hosting the full glyph sets would cost megabytes.
 
 ## Components
 
-- Boot screen — the cabinet powering on. Covers everything on a cold load until the two typefaces
-  and the landed screen's music track are ready, so the machine comes up once rather than swapping
-  faces and stuttering its theme in front of the player. Deliberately drawn in the _system_
-  monospace, never `DotGothic16`: it is on screen precisely because that face has not arrived, and
-  dressing it in one would make it the first thing to reflow. Server-rendered, so it is in the HTML
-  rather than mounted over a screen the player has already seen.
+- Boot screen — the cabinet powering on. Opens on a `PRESS ANY BUTTON` gate, because a browser
+  lets the cabinet make no sound until the player has touched it; asking for that press up front
+  means the title screen arrives with its music instead of silent. A tap anywhere or any key counts,
+  except browser shortcuts and Escape. Loading starts behind the gate, so a player who pauses on it
+  usually finds everything ready and never sees a bar. Deliberately drawn in the _system_ monospace,
+  never `DotGothic16`: it is on screen precisely because that face has not arrived, and dressing it
+  in one would make it the first thing to reflow. Server-rendered, so it is in the HTML rather than
+  mounted over a screen the player has already seen; the prompt itself waits for hydration, so it
+  never offers a press that would go nowhere.
 - `.cabinet` — the room. Radial lift over `--void`, centres the screen.
 - `.screen` — the tube. Flex column, `min-height: min(760px, 100dvh - 56px)`, owns the scanlines.
 - `.hud` / `.readable` — the two type roles.
@@ -84,10 +87,13 @@ choice for CJK: self-hosting the full glyph sets would cost megabytes.
 
 One authored moment per surface, not scattered effects.
 
-- Boot: a gold bar ruled into lamps fills against real progress — the typefaces are worth 30% of
-  it and the music track the rest, read from the element's own buffer — then the whole screen fades
-  out over 420ms onto the cabinet behind it. Held for a minimum of 700ms so a warm reload reads as
-  a machine starting rather than a flicker, and released after 8s regardless, because the game is
+- Boot: the gate's prompt blinks on the same 1.06s step as `PUSH START`. After the press, if
+  anything is still loading, a gold bar ruled into lamps fills against real progress — the
+  typefaces are worth 30% of it and the music track the rest, read from the element's own buffer —
+  then the whole screen fades out over 420ms onto the cabinet behind it while the music fades up
+  over 900ms. The track is started muted inside the press and rewound at the reveal, so nothing is
+  heard under the bar and a first visit hears the opening bar. The bar holds at least 500ms once
+  shown, so it never flickers, and lets go 8s after the press regardless, because the game is
   completely playable in silence and a slow theme must never lock a player out of it.
 - Attract: `PUSH START` blinks on a 1.06s step; the demo question cycles every 3.2s.
 - Round: the timer bar is the motion — a `scaleX` transform driven by `requestAnimationFrame`,
@@ -126,8 +132,12 @@ Numerals are `tabular-nums` everywhere a value changes.
 ## Known gaps
 
 - No `prefers-contrast` handling.
-- Time-based motion on a screen runs while the boot screen is still over it, so a player who deep-
-  links to the members roll meets it a second or so in rather than at the top of the loop.
+- Time-based motion on a screen runs while the boot screen is still over it — including however
+  long the player sits at the gate — so a player who deep-links to the members roll meets it partway
+  through a line rather than at the top of the loop.
+- The music is held and started through `<audio>` volume and `muted`; iOS ignores `volume`, so there
+  the theme arrives at full level with no fade. The gate's unlock should be confirmed on a real
+  iPhone: every browser run here was desktop engines.
 - The scanline overlay is a fixed opacity with no user control.
 - The members roll has no dedicated pause control (WCAG 2.2.2). Scrolling by hand holds it for 2s,
   reduced motion stills it, and `← TITLE` is always reachable.

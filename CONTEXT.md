@@ -11,7 +11,9 @@ the things they contributed scroll past in an endless loop, like a film's closin
 _Avoid_: Staff roll, credits, credits page, credit scene, about page
 
 **Boot Screen**:
-The dark screen that holds the cabinet before the screen a player actually asked for, while the two
-typefaces and that screen's music track load. It is the machine powering on, not a route: it comes
-up once per page load, over whatever was landed on, and client-side navigation never sees it.
+The dark screen that holds the cabinet before the screen a player actually asked for. It opens on a
+PRESS ANY BUTTON gate — the press is what lets the browser play sound — then, if the two typefaces
+and that screen's music track are still loading, a loading bar. It is the machine powering on, not a
+route: it comes up once per page load, over whatever was landed on, and client-side navigation never
+sees it.
 _Avoid_: splash screen, loading spinner, preloader, interstitial
