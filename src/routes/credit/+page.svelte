@@ -95,6 +95,16 @@
 			const dt = Math.min(now - last, 100)
 			last = now
 
+			// While the cabinet is booting behind the gate/loading screen, hold at start.
+			if (tube.closest('[inert]')) {
+				lastInput = now
+				tube.scrollTop = 0
+				pos = 0
+				placed = 0
+				frame = requestAnimationFrame(step)
+				return
+			}
+
 			if (held || now - lastInput < RESUME_MS) {
 				pos = tube.scrollTop
 			} else {
