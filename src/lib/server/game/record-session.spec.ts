@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { parseSubmission, SubmissionError } from './record-session'
+import { getTableColumns } from 'drizzle-orm'
+import { sessionAnswers } from '../db/schema'
+import {
+	D1_MAX_BOUND_PARAMS,
+	INSERT_CHUNK,
+	parseSubmission,
+	SubmissionError,
+} from './record-session'
 
 /**
  * `parseSubmission` is the only thing standing between an untrusted POST body
@@ -85,5 +92,15 @@ describe('parseSubmission', () => {
 		const answers = [{ ...validAnswer, choiceId: null }]
 		const result = parseSubmission({ ...validBody, answers })
 		expect(result.answers[0].choiceId).toBeNull()
+	})
+})
+
+describe('INSERT_CHUNK', () => {
+	// A chunk that binds past D1's limit fails every run long enough to fill it,
+	// which is exactly the runs good enough to rank.
+	it("keeps one answer insert inside D1's bound-parameter limit", () => {
+		const columns = Object.keys(getTableColumns(sessionAnswers)).length
+		expect(INSERT_CHUNK).toBeGreaterThan(0)
+		expect(INSERT_CHUNK * columns).toBeLessThanOrEqual(D1_MAX_BOUND_PARAMS)
 	})
 })

@@ -1,5 +1,5 @@
-import { and, eq, inArray } from 'drizzle-orm'
-import { choices, questions } from '../db/schema'
+import { and, eq, getTableColumns, inArray, sql } from 'drizzle-orm'
+import { choices, players, questions, sessionAnswers, sessions } from '../db/schema'
 import { listLeaderboard, rankOfScore } from './queries'
 import { clampElapsed, tally } from '#lib/game/scoring.js'
 import {
@@ -23,8 +23,16 @@ import {
  */
 const MAX_ANSWERS = 300
 
-/** D1 binds parameters per statement, so bulk inserts go in bites. */
-const INSERT_CHUNK = 20
+/** D1 refuses a statement that binds more than this many parameters. */
+export const D1_MAX_BOUND_PARAMS = 100
+
+/**
+ * Answer rows per INSERT, derived from the column count so a new column on
+ * `session_answers` cannot silently push a long run past D1's limit.
+ */
+export const INSERT_CHUNK = Math.floor(
+	D1_MAX_BOUND_PARAMS / Object.keys(getTableColumns(sessionAnswers)).length,
+)
 
 const NAME_ALPHABET = new Set(NAME_CHARS)
 
@@ -51,7 +59,7 @@ export class SubmissionError extends Error {
  */
 export async function recordSession(locals: App.Locals, body: unknown): Promise<SubmitResponse> {
 	const submission = parseSubmission(body)
-	const { db, repos } = locals
+	const { db } = locals
 
 	/* ── grade ────────────────────────────────────────────────────────────── */
 
@@ -97,17 +105,24 @@ export async function recordSession(locals: App.Locals, body: unknown): Promise<
 
 	/* ── write ────────────────────────────────────────────────────────────── */
 
+	// Player, session and answers go to D1 as one batch, which D1 runs as a
+	// single transaction. Written one by one, a failure part-way left a finished,
+	// scored session with no answers on the board — and every retry added another.
+	const finishedAt = new Date()
+	const sessionId = crypto.randomUUID()
+
 	// A fresh player row per run, deliberately. A name here is a string on a
 	// score, not an identity the system recognises across runs, so two runs by
 	// the same person under the same name are two unrelated rows.
-	const [player] = await repos.players.create({
+	const insertPlayer = db.insert(players).values({
 		name: submission.playerName,
-		createdAt: new Date(),
+		createdAt: finishedAt,
 	})
 
-	const finishedAt = new Date()
-	const [session] = await repos.sessions.create({
-		playerId: player.id,
+	const insertSession = db.insert(sessions).values({
+		id: sessionId,
+		// The batch shares one connection, so this is the player row just above.
+		playerId: sql`last_insert_rowid()`,
 		level: submission.level,
 		mode: submission.mode,
 		topicId: submission.topicId,
@@ -123,7 +138,7 @@ export async function recordSession(locals: App.Locals, body: unknown): Promise<
 	})
 
 	const answerRows = graded.map((answer, position) => ({
-		sessionId: session.id,
+		sessionId,
 		position,
 		questionId: answer.questionId,
 		choiceId: answer.choiceId,
@@ -133,9 +148,12 @@ export async function recordSession(locals: App.Locals, body: unknown): Promise<
 		answeredAt: finishedAt,
 	}))
 
+	const insertAnswers = []
 	for (let i = 0; i < answerRows.length; i += INSERT_CHUNK) {
-		await repos.session_answers.create_many(answerRows.slice(i, i + INSERT_CHUNK))
+		insertAnswers.push(db.insert(sessionAnswers).values(answerRows.slice(i, i + INSERT_CHUNK)))
 	}
+
+	await db.batch([insertPlayer, insertSession, ...insertAnswers])
 
 	/* ── read back ────────────────────────────────────────────────────────── */
 
@@ -148,7 +166,7 @@ export async function recordSession(locals: App.Locals, body: unknown): Promise<
 
 	return {
 		recorded: {
-			sessionId: session.id,
+			sessionId,
 			questionCount: result.questionCount,
 			correctCount: result.correctCount,
 			wrongCount: result.wrongCount,
