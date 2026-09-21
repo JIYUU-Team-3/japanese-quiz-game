@@ -1,4 +1,5 @@
 import { expect, test, type Page, type APIRequestContext } from '@playwright/test'
+import { open } from './cabinet.js'
 import { TABLE_SIZE } from '../src/lib/game/types.js'
 
 /**
@@ -143,7 +144,7 @@ for (const vp of VIEWPORTS) {
 			const key = await answerKey(request, 'N4')
 			const readings: { label: string; chrome: Chrome }[] = []
 
-			await page.goto('/play')
+			await open(page, '/play')
 			await expect(page.getByRole('heading', { name: 'SELECT COURSE' })).toBeVisible()
 			readings.push({ label: 'select', chrome: await chrome(page) })
 
@@ -196,7 +197,7 @@ for (const vp of VIEWPORTS) {
 			)
 
 			const key = await answerKey(request, 'N4')
-			await page.goto('/')
+			await open(page, '/')
 			await page.getByRole('link', { name: 'PUSH START' }).click()
 			await expect(page.getByRole('heading', { name: 'SELECT COURSE' })).toBeVisible()
 
@@ -214,6 +215,24 @@ for (const vp of VIEWPORTS) {
 
 			await expect(page.getByRole('heading', { name: /RANK IN/ })).toBeVisible()
 			const atOver = await chrome(page)
+
+			// GAME OVER must still be on the screen that announces it.
+			//
+			// A centred field that overruns is pushed past both its edges, and the
+			// overflow at the top cannot be scrolled back to — which on this
+			// viewport silently ate the heading and opened the phase on the SCORE
+			// line. Checked against the *field's* top edge rather than the
+			// viewport's, because that is the boundary the clipping happens at:
+			// the heading was still inside the tube and still had a box, it was
+			// simply above the only part of the field anything can reach.
+			const overTop = (await page.locator('section.over').boundingBox())!.y
+			const head = page.getByRole('heading', { name: 'GAME OVER' })
+			await expect(head).toBeVisible()
+			const headBox = (await head.boundingBox())!
+			expect(
+				headBox.y,
+				'GAME OVER is clipped above the top of the scrollable field',
+			).toBeGreaterThanOrEqual(overTop - 1)
 
 			// ENTER is the one control that must never be out of reach: it is how a
 			// run gets onto the board. Reaching it may scroll the field, but must
@@ -245,7 +264,7 @@ for (const vp of VIEWPORTS) {
 			// the wait is for the board to have *settled*, either way, rather than
 			// for the table specifically.
 			const settled = page.locator('.table, .state.empty')
-			await page.goto('/ranking')
+			await open(page, '/ranking')
 			await expect(settled.first()).toBeVisible()
 			readings.push({ label: 'initial', chrome: await chrome(page) })
 
@@ -261,7 +280,7 @@ for (const vp of VIEWPORTS) {
 
 		test('no screen scrolls sideways', async ({ page }) => {
 			for (const path of ['/', '/play', '/ranking', '/credit', '/review']) {
-				await page.goto(path)
+				await open(page, path)
 				await expect(page.locator('main.screen')).toBeVisible()
 				const c = await chrome(page)
 				expect(c.overflowPx, `${path} scrolls sideways by ${c.overflowPx}px`).toBeLessThanOrEqual(0)
@@ -272,7 +291,7 @@ for (const vp of VIEWPORTS) {
 			const paths = ['/', '/play', '/ranking', '/credit', '/review']
 			const readings: { label: string; chrome: Chrome }[] = []
 			for (const path of paths) {
-				await page.goto(path)
+				await open(page, path)
 				await expect(page.locator('main.screen')).toBeVisible()
 				readings.push({ label: path, chrome: await chrome(page) })
 			}

@@ -632,7 +632,10 @@
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		justify-content: center;
+		/* `safe`, so a phase taller than the tube falls back to the top edge
+		   instead of overrunning past it where nothing can scroll back. Reasoned
+		   out at `.over` below. */
+		justify-content: safe center;
 		gap: 20px;
 		padding: clamp(28px, 6vw, 60px) var(--pad);
 		text-align: center;
@@ -939,7 +942,25 @@
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		justify-content: center;
+		/*
+		 * `safe`, and never a bare `center`.
+		 *
+		 * Centring a field that overruns pushes it past *both* edges, and the
+		 * overflow at the top is unreachable: scrolling runs from 0 downwards, so
+		 * anything above the start edge is clipped with no way to scroll back to
+		 * it. Not a corner case here — this is the tallest state the cabinet has,
+		 * and on an iPhone SE it overran by 58px and took GAME OVER with it. The
+		 * screen opened on the SCORE line with the heading cut off above.
+		 *
+		 * `safe` centres while it fits and falls back to the start edge the moment
+		 * it does not, so the whole phase stays reachable at every height. A
+		 * browser too old to know the keyword drops the declaration and lands on
+		 * the initial `flex-start`, which is the same escape by another route.
+		 *
+		 * ⚠ The same shape is `.select` above and `.stage` on the title screen.
+		 * Every field inside the fixed-height tube centres this way.
+		 */
+		justify-content: safe center;
 		gap: 18px;
 		padding: clamp(24px, 5vw, 52px) var(--pad);
 		text-align: center;

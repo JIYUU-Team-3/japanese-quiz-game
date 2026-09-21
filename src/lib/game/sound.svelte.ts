@@ -162,6 +162,15 @@ const fades: Partial<Record<MusicTrack, number>> = {}
 let current: MusicTrack | null = null
 /** A cue waiting out the GAME OVER hit before it comes in. See `setMusic`. */
 let held: number | null = null
+/**
+ * Whether the boot screen is still up. Until `powerOn`, music is loaded but
+ * never heard.
+ *
+ * Starts true and has exactly one way to become false, because the boot screen
+ * is in every page load: it is up before any screen asks for a track, and the
+ * track it asks for must arrive with the reveal rather than under the gate.
+ */
+let booting = true
 
 function storedMute(key: string): boolean {
 	if (typeof localStorage === 'undefined') return false
@@ -421,9 +430,11 @@ function bringIn(track: MusicTrack): void {
 		return
 	}
 	if (el.paused) el.volume = 0
-	// A rejected play() means the first gesture has not happened yet — the normal
-	// state of the title screen on a cold load, since that is where a visitor
-	// lands. `current` stays set, and `unlockAudio` comes back for it.
+	// Built and loading, which is all the boot screen needs from it. It is
+	// started inside the press (see `applyMusic`) and heard from `powerOn`.
+	if (booting) return
+	// A rejected play() means the first gesture has not happened yet. `current`
+	// stays set, and `unlockAudio` comes back for it.
 	void el.play().catch(() => undefined)
 	rampTo(track, TRACKS[track].gain, CROSSFADE_MS)
 }
@@ -449,8 +460,15 @@ function applyMusic(hard = false): void {
 			if (wanted) void el.play().catch(() => undefined)
 			continue
 		}
-		el.volume = wanted ? TRACKS[track].gain : 0
-		if (wanted) void el.play().catch(() => undefined)
+		el.volume = wanted && !booting ? TRACKS[track].gain : 0
+		if (wanted) {
+			// Behind the boot screen the press still starts the track — muted, so
+			// nothing is heard under the loading bar. What matters is that play()
+			// was called inside a gesture: that is what lets `powerOn` unmute it
+			// later from a timer, which Safari would otherwise refuse.
+			if (booting) el.muted = true
+			void el.play().catch(() => undefined)
+		}
 		// Paused where it stands, not rewound: `fromTop` decides at the next cue
 		// whether that track begins again or picks up.
 		else el.pause()
@@ -526,4 +544,61 @@ export function setMusic(cue: MusicCue): void {
 		return
 	}
 	bringIn(next)
+}
+
+/**
+ * How far the music the cabinet is currently asking for has loaded, 0 to 1.
+ *
+ * Read by the boot screen, which holds the cabinet dark until the first track
+ * can play without stalling. A theme that arrives in pieces under a title
+ * screen is worse than one that arrives a moment late.
+ *
+ * 1 means there is nothing left to wait for, which is not the same as "a track
+ * is loaded": a browser with no `Audio`, a player who has switched the music
+ * off, and a screen that asked for silence all report ready, because in none of
+ * those cases is anyone waiting on bytes.
+ *
+ * Deliberately polled rather than hung off `canplaythrough`. The caller wants a
+ * number every tick for its bar anyway, so an event would only be a second
+ * source of the same fact — and `canplaythrough` on an element that finished
+ * buffering before the listener attached never fires at all, which is exactly
+ * the case a reload out of cache produces.
+ */
+export function musicProgress(): number {
+	if (typeof Audio !== 'function' || musicMuted || !current) return 1
+	const el = players[current]
+	// `setMusic` builds the element. Until the effect that calls it has run
+	// there is nothing to measure, and nothing has started loading either.
+	if (!el) return 0
+	// HAVE_ENOUGH_DATA is the browser's own verdict that it can play to the end
+	// without stopping, which is the question being asked here. Buffered bytes
+	// below only stand in for it while it is still making up its mind.
+	if (el.readyState >= 4) return 1
+	const { duration, buffered } = el
+	if (!Number.isFinite(duration) || duration <= 0 || buffered.length === 0) return 0
+	// Held under 1 so that `readyState` above stays the only thing that can
+	// report ready: bytes on hand are not the same as bytes decoded.
+	return Math.min(buffered.end(buffered.length - 1) / duration, 0.99)
+}
+
+/**
+ * The boot screen has lifted: bring the music up.
+ *
+ * Called once, as the reveal starts, so the track fades in with the screen
+ * rather than playing under the loading bar. It is rewound first, whatever its
+ * `fromTop` says — it has only ever run muted, so the player has heard none of
+ * it, and a first visit should hear the opening bar.
+ */
+export function powerOn(): void {
+	if (!booting) return
+	booting = false
+	for (const track of TRACK_NAMES) {
+		const el = players[track]
+		if (!el) continue
+		// Still at volume 0, so lifting the mute is silent; the ramp in `bringIn` is what
+		// the player hears.
+		el.muted = false
+		if (track === current) rewind(el)
+	}
+	if (current) bringIn(current)
 }

@@ -5,6 +5,7 @@
 	import { activeRunState } from '#lib/game/run.svelte.js'
 	import { locales, localizeHref } from '#lib/paraglide/runtime.js'
 	import favicon from '#lib/assets/favicon.svg'
+	import BootScreen from '#lib/components/BootScreen.svelte'
 	import { play, setMusic, unlockAudio } from '#lib/game/sound.svelte.js'
 	import '#lib/styles/arcade.css'
 
@@ -93,7 +94,14 @@
      activation, and the quiz is playable from the keyboard alone. -->
 <svelte:window onpointerdown={press} onkeydown={unlockAudio} />
 
-{@render children()}
+<!-- Here and not inside a screen: the boot screen belongs to the page load, not
+     to a route. It comes up once, over whatever the player landed on — a shared
+     link to the ranking gets the same handled arrival the title screen does —
+     and client-side navigation never sees it again, because this component
+     outlives every one of them. -->
+<BootScreen>
+	{@render children()}
+</BootScreen>
 
 <div style="display:none">
 	{#each locales as locale (locale)}

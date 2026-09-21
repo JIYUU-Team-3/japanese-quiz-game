@@ -67,6 +67,17 @@ choice for CJK: self-hosting the full glyph sets would cost megabytes.
 
 ## Components
 
+- Boot screen — the cabinet powering on. Opens on a `PRESS ANY BUTTON` gate, because a browser
+  lets the cabinet make no sound until the player has touched it; asking for that press up front
+  means the title screen arrives with its music instead of silent. A tap anywhere or any key counts,
+  except browser shortcuts and Escape. Loading starts behind the gate, so a player who pauses on it
+  usually finds everything ready and never sees a bar. Its title is the homepage's 日本語アタック,
+  set exactly as `.title-ja` with `.glow-gold`, and its prompt is lettered as `PUSH START`, so the
+  reveal lands on a machine the player was already looking at. Both stay dark until DotGothic16 has
+  loaded their glyphs, then fade in, so neither shows in a fallback and swaps. The loading bar's
+  readout stays in the _system_ monospace.
+  Server-rendered, so it is in the HTML rather than mounted over a screen the player has already
+  seen; the prompt itself waits for hydration, so it never offers a press that would go nowhere.
 - `.cabinet` — the room. Radial lift over `--void`, centres the screen.
 - `.screen` — the tube. Flex column, `min-height: min(760px, 100dvh - 56px)`, owns the scanlines.
 - `.hud` / `.readable` — the two type roles.
@@ -78,6 +89,14 @@ choice for CJK: self-hosting the full glyph sets would cost megabytes.
 
 One authored moment per surface, not scattered effects.
 
+- Boot: the gate's prompt blinks on the same 1.06s step as `PUSH START`. After the press, if
+  anything is still loading, a gold bar ruled into lamps fills against real progress — the
+  typefaces are worth 30% of it and the music track the rest, read from the element's own buffer —
+  then the whole screen fades out over 420ms onto the cabinet behind it while the music fades up
+  over 900ms. The track is started muted inside the press and rewound at the reveal, so nothing is
+  heard under the bar and a first visit hears the opening bar. The bar holds at least 500ms once
+  shown, so it never flickers, and lets go 8s after the press regardless, because the game is
+  completely playable in silence and a slow theme must never lock a player out of it.
 - Attract: `PUSH START` blinks on a 1.06s step; the demo question cycles every 3.2s.
 - Round: the timer bar is the motion — a `scaleX` transform driven by `requestAnimationFrame`,
   turning red under three seconds. Time is never the only channel: a numeric readout runs beside it.
@@ -94,6 +113,13 @@ One authored moment per surface, not scattered effects.
   cell reads as the likelier answer and leaks a free hint. The choices grid uses equal `1fr` rows
   and identical styling; only state colour differentiates.
 - **Nothing is labelled twice.** No element repeats what another already tells the player.
+- **Every scrolling field centres with `justify-content: safe center`, never a bare `center`.** The
+  tube is a fixed rectangle, so each phase's field (`.stage`, `.select`, `.over`) scrolls inside it
+  — and a centred field that overruns is pushed past _both_ edges, where the overflow above the
+  start edge can never be scrolled back to. That silently ate `GAME OVER` on an iPhone SE and the
+  title lockup at 320px. `safe` centres while it fits and falls back to the top edge when it does
+  not; a browser that does not know the keyword drops the declaration and lands on `flex-start`,
+  which is the same escape.
 - The round splits into a pinned HUD strip and a centred main block that fills the frame; the
   verdict area reserves its height so feedback never shifts the layout under a player's finger.
 - Answer blanks (`＿＿＿`) are wrapped `white-space: nowrap` so they never break across lines.
@@ -108,6 +134,12 @@ Numerals are `tabular-nums` everywhere a value changes.
 ## Known gaps
 
 - No `prefers-contrast` handling.
+- Time-based motion on a screen runs while the boot screen is still over it — including however
+  long the player sits at the gate — so a player who deep-links to the members roll meets it partway
+  through a line rather than at the top of the loop.
+- The music is held and started through `<audio>` volume and `muted`; iOS ignores `volume`, so there
+  the theme arrives at full level with no fade. The gate's unlock should be confirmed on a real
+  iPhone: every browser run here was desktop engines.
 - The scanline overlay is a fixed opacity with no user control.
 - The members roll has no dedicated pause control (WCAG 2.2.2). Scrolling by hand holds it for 2s,
   reduced motion stills it, and `← TITLE` is always reachable.

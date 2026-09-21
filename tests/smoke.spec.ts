@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { open } from './cabinet.js'
 
 /**
  * The cheapest possible "is it alive" pair, kept separate from the game loop so
@@ -7,14 +8,14 @@ import { test, expect } from '@playwright/test'
  */
 
 test('home page renders', async ({ page }) => {
-	const response = await page.goto('/')
+	const response = await open(page, '/')
 
 	expect(response?.ok()).toBe(true)
 	await expect(page.getByRole('heading', { name: /NIHONGO ATTACK/ })).toBeVisible()
 })
 
 test('serves the SvelteKit app shell', async ({ page }) => {
-	await page.goto('/')
+	await open(page, '/')
 
 	await expect(page.locator('html')).toHaveAttribute('lang', /.+/)
 })

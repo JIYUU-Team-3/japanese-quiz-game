@@ -1,4 +1,5 @@
 import { expect, test, type Page, type APIRequestContext } from '@playwright/test'
+import { open } from './cabinet.js'
 
 /**
  * The whole loop, over the real backend: title → course → run → name → board.
@@ -62,7 +63,7 @@ test('the attract screen is rendered by the server, not fetched by the browser',
 }) => {
 	// JavaScript is irrelevant here: the point is that the first response already
 	// carries the board and a demo question.
-	const response = await page.goto('/')
+	const response = await open(page, '/')
 	const html = (await response!.text()).replace(/\s+/g, ' ')
 
 	expect(html).toContain('NIHONGO ATTACK')
@@ -82,7 +83,7 @@ test(
 		const key = await answerKey(request, 'N4')
 		const name = `T${String(Date.now()).slice(-5)}`
 
-		await page.goto('/')
+		await open(page, '/')
 		await page.getByRole('link', { name: 'PUSH START' }).click()
 
 		await expect(page.getByRole('heading', { name: 'SELECT COURSE' })).toBeVisible()
@@ -114,7 +115,7 @@ test(
 )
 
 test('the ranking filters by course on the server', async ({ page }) => {
-	await page.goto('/ranking')
+	await open(page, '/ranking')
 	await page.getByRole('button', { name: 'N3', exact: true }).click()
 
 	const board = page.locator('.table .row:not(.header-row)')

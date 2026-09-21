@@ -15,6 +15,20 @@
 			href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=DotGothic16&display=swap"
 			rel="stylesheet"
 		/>
+		<!--
+			The boot screen is dismissed by script, so with scripting off it would
+			be a permanent lid over a game that is otherwise perfectly playable
+			without it. Hidden here rather than inside the component: its own
+			<style> is scoped and compiled, and this has to be a plain rule on a
+			plain id that no build step can rename.
+		-->
+		<noscript>
+			<style>
+				#boot-screen {
+					display: none !important;
+				}
+			</style>
+		</noscript>
 		%sveltekit.head%
 	</head>
 

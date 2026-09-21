@@ -144,7 +144,10 @@
 		display: flex;
 		flex-direction: column;
 		align-items: center;
-		justify-content: center;
+		/* `safe`, so a screen taller than the tube falls back to the top edge
+		   instead of overrunning past it where nothing can scroll back. Reasoned
+		   out at `.over` in src/routes/play/+page.svelte. */
+		justify-content: safe center;
 		gap: clamp(16px, 2.4vw, 24px);
 		padding: clamp(22px, 3.4vw, 34px) var(--pad);
 		text-align: center;
