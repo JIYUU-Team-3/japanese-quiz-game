@@ -229,7 +229,7 @@
 	>
 		<div class="plate">
 			<!-- `lang` so a fallback, if it ever shows, picks Japanese glyph forms. -->
-			<p class="mark" class:lit={titleLit} lang="ja">日本語アタック</p>
+			<p class="mark glow-gold" class:lit={titleLit} lang="ja">日本語アタック</p>
 			<div class="slot">
 				{#if !barShown}
 					{#if running}
@@ -320,7 +320,8 @@
 	}
 
 	/* The homepage's `.title-ja`, set the same so the reveal lands the title on
-	   the name the player has just been looking at. */
+	   the name the player has just been looking at. Its colour and bloom are the
+	   shared `.glow-gold` in the markup, as on the homepage, not a copy here. */
 	.mark {
 		margin: 0;
 		font-family: var(--font-dot);
@@ -329,8 +330,6 @@
 		letter-spacing: 0.06em;
 		text-indent: 0.06em;
 		text-transform: none;
-		color: var(--gold);
-		text-shadow: var(--bloom) rgb(255 196 0 / 0.55);
 		opacity: 0;
 		transition: opacity 320ms ease-out;
 	}
