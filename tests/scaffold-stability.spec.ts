@@ -125,8 +125,11 @@ async function answer(page: Page, key: Map<string, string>, correctly: boolean) 
 	for (let i = 0; i < count; i++) {
 		const body = (await choices.nth(i).locator('.text').innerText()).trim()
 		if ((body === wanted) === correctly) {
-			await choices.nth(i).click()
-			await page.locator('button.next').click()
+			await choices.nth(i).click({ force: true })
+			const nextBtn = page.locator('button.next')
+			await expect(nextBtn).toBeEnabled({ timeout: 5000 })
+			await nextBtn.click({ force: true })
+			await expect(page.locator('button.next')).toHaveCount(0)
 			return
 		}
 	}

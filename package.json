@@ -7,7 +7,7 @@
 	"scripts": {
 		"dev": "vite dev",
 		"build": "wrangler types && vite build",
-		"preview": "wrangler dev .svelte-kit/cloudflare/_worker.js --port 4173",
+		"preview": "wrangler dev .svelte-kit/cloudflare/_worker.js --ip 127.0.0.1 --port 4173",
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "pnpm run gen:i18n && wrangler types && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "pnpm run gen:i18n && wrangler types && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
@@ -17,7 +17,7 @@
 		"test:unit": "vitest",
 		"test": "npm run test:unit -- --run && npm run test:e2e",
 		"test:e2e": "playwright install && playwright test",
-		"preview:ci": "wrangler dev .svelte-kit/cloudflare/_worker.js --local --port 4173",
+		"preview:ci": "wrangler dev .svelte-kit/cloudflare/_worker.js --local --ip 127.0.0.1 --port 4173",
 		"gen": "wrangler types",
 		"gen:i18n": "paraglide-js compile --project ./project.inlang --outdir ./src/lib/paraglide --emit-ts-declarations",
 		"db:push": "drizzle-kit push",
@@ -25,7 +25,7 @@
 		"db:migrate": "drizzle-kit migrate",
 		"db:studio": "drizzle-kit studio",
 		"db:seed:gen": "node --experimental-strip-types scripts/generate-seed.ts > drizzle/seed.sql",
-		"db:reset:local": "wrangler d1 execute quizdb --local --file=drizzle/0000_init_quiz_schema.sql && wrangler d1 execute quizdb --local --file=drizzle/0001_nullable_session_player.sql && wrangler d1 execute quizdb --local --file=drizzle/seed.sql",
+		"db:reset:local": "wrangler d1 execute quizdb --local --file=drizzle/reset.sql && wrangler d1 execute quizdb --local --file=drizzle/0000_init_quiz_schema.sql && wrangler d1 execute quizdb --local --file=drizzle/0001_nullable_session_player.sql && wrangler d1 execute quizdb --local --file=drizzle/seed.sql",
 		"db:reset:remote": "wrangler d1 execute quizdb --remote --file=drizzle/0000_init_quiz_schema.sql && wrangler d1 execute quizdb --remote --file=drizzle/0001_nullable_session_player.sql && wrangler d1 execute quizdb --remote --file=drizzle/seed.sql",
 		"db:seed:local": "wrangler d1 execute quizdb --local --file=drizzle/seed.sql",
 		"db:seed:remote": "wrangler d1 execute quizdb --remote --file=drizzle/seed.sql"
