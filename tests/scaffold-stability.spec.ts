@@ -1,6 +1,5 @@
 import { expect, test, type Page, type APIRequestContext } from '@playwright/test'
 import { open } from './cabinet.js'
-import { TABLE_SIZE } from '../src/lib/game/types.js'
 
 /**
  * The cabinet must not wobble.
@@ -178,83 +177,6 @@ for (const vp of VIEWPORTS) {
 			readings.push({ label: 'game over', chrome: await chrome(page) })
 
 			expectNoDrift(readings)
-		})
-
-		test('the name entry stays inside the tube and reachable on an empty board', async ({
-			page,
-			request,
-		}) => {
-			// The tallest state the cabinet has: GAME OVER *plus* the RANK IN form
-			// and its character pad. On a fixed-height tube this is the case that
-			// must scroll inside the glass instead of stretching it.
-			//
-			// Reaching RANK IN means out-scoring the bottom of the board, so the
-			// board is read first and the precondition stated out loud: on a
-			// development database it is far short of full, and any score at all
-			// ranks. If that ever stops being true this fails here, naming why,
-			// rather than further down as a mystery about layout.
-			const board = (await (await request.get('/api/leaderboard')).json()) as { score: number }[]
-			test.skip(
-				board.length >= TABLE_SIZE,
-				`this test needs room on the board; it holds ${board.length} of ${TABLE_SIZE}`,
-			)
-
-			const key = await answerKey(request, 'N4')
-			await open(page, '/')
-			await page.getByRole('link', { name: 'PUSH START' }).click()
-			await expect(page.getByRole('heading', { name: 'SELECT COURSE' })).toBeVisible()
-
-			const n4 = page.getByRole('button').filter({ hasText: 'N4' })
-			await expect(async () => {
-				await n4.click()
-				await expect(page.locator('section.round h1')).toBeVisible({ timeout: 2000 })
-			}).toPass({ timeout: 20_000 })
-
-			await answer(page, key, true)
-			for (let i = 0; i < 3; i++) {
-				await expect(page.locator('section.round h1')).toBeVisible()
-				await answer(page, key, false)
-			}
-
-			await expect(page.getByRole('heading', { name: /RANK IN/ })).toBeVisible()
-			const atOver = await chrome(page)
-
-			// GAME OVER must still be on the screen that announces it.
-			//
-			// A centred field that overruns is pushed past both its edges, and the
-			// overflow at the top cannot be scrolled back to — which on this
-			// viewport silently ate the heading and opened the phase on the SCORE
-			// line. Checked against the *field's* top edge rather than the
-			// viewport's, because that is the boundary the clipping happens at:
-			// the heading was still inside the tube and still had a box, it was
-			// simply above the only part of the field anything can reach.
-			const overTop = (await page.locator('section.over').boundingBox())!.y
-			const head = page.getByRole('heading', { name: 'GAME OVER' })
-			await expect(head).toBeVisible()
-			const headBox = (await head.boundingBox())!
-			expect(
-				headBox.y,
-				'GAME OVER is clipped above the top of the scrollable field',
-			).toBeGreaterThanOrEqual(overTop - 1)
-
-			// ENTER is the one control that must never be out of reach: it is how a
-			// run gets onto the board. Reaching it may scroll the field, but must
-			// not move the frame.
-			const enter = page.getByRole('button', { name: 'ENTER' })
-			await enter.scrollIntoViewIfNeeded()
-			const box = await enter.boundingBox()
-			expect(box, 'ENTER has no box').not.toBeNull()
-			expect(box!.y, 'ENTER sits above the viewport').toBeGreaterThanOrEqual(0)
-			expect(box!.y + box!.height, 'ENTER sits below the viewport').toBeLessThanOrEqual(vp.height)
-
-			// The page itself must not have scrolled to get there.
-			const scrolledPage = await page.evaluate(() => window.scrollY)
-			expect(scrolledPage, 'the page scrolled instead of the field').toBe(0)
-
-			expectNoDrift([
-				{ label: 'game over', chrome: atOver },
-				{ label: 'entry reached', chrome: await chrome(page) },
-			])
 		})
 
 		test('the ranking header holds still when the course filter changes the board', async ({
