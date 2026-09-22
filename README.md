@@ -182,7 +182,6 @@ src/
     ranking/            The leaderboard
     members/            Member contributions roll, linked from CREDIT FREE PLAY on the title screen
     api/                topics, questions, leaderboard, sessions
-    backend-test/       Raw CRUD harness over the repositories
 scripts/
   generate-seed.ts      official-data.ts -> drizzle/seed.sql
 drizzle/
@@ -303,10 +302,9 @@ Generated files that builds rewrite in their own style — `worker-configuration
 - **The answer key ships to the browser.** `/api/questions` returns `isCorrect` on every choice, so the answer is readable in devtools. This is deliberate — the run screen has to give a verdict the instant a finger lands, and a round trip per question would put the network inside a ten-second clock. The board is protected at `POST /api/sessions` instead, which regrades server-side. Withholding the key would mean grading each answer over the wire, which is a redesign of the round, not a patch.
 - **Runs are recorded, not resumable.** A session row is written once, at the end. A player who closes the tab mid-run leaves no trace, and `status: 'abandoned'` is accepted by the endpoint but never sent.
 - **Template scaffolding is still present.** `src/routes/demo/` and `src/lib/vitest-examples/` are sample code, and `src/routes/demo/playwright/page.svelte.e2e.ts` never runs because Playwright's `testDir` is `./tests`. All safe to delete.
-- **`src/routes/backend-test/` is a raw CRUD harness**, not part of the game. It writes directly to every table with no validation and should not be reachable in production.
 - **CI triggers on `main`/`master`, but this repo's trunk is `development`** ([workflow](.github/workflows/playwright.yml)), so the suite does not currently run on pull requests. Adding `development` to both trigger lists is the fix.
 - **CI runs Playwright only** — no `lint`, `check`, or unit tests.
-- **`pnpm lint` reports 43 pre-existing errors**, all `@typescript-eslint/naming-convention` on the snake_case methods and locals in `src/lib/server/db/` and `src/routes/backend-test/`. The layer's convention and the repo's lint config disagree; renaming has no autofixer and touches every call site, so it wants its own change.
+- **`pnpm lint` reports pre-existing errors**, all `@typescript-eslint/naming-convention` on snake_case methods and locals in `src/lib/server/db/`. The layer's convention and the repo's lint config disagree; renaming has no autofixer and touches every call site, so it wants its own change.
 - **`.npmrc` sets `engine-strict=true` but `package.json` has no `engines` field**, so the Node/pnpm versions above are not actually enforced.
 
 ## Regenerating this scaffold

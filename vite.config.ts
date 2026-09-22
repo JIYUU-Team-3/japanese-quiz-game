@@ -34,6 +34,10 @@ export default defineConfig({
 						enabled: true,
 						provider: playwright(),
 						instances: [{ browser: 'chromium', headless: true }],
+						api: {
+							host: '127.0.0.1',
+							port: 40125,
+						},
 					},
 					include: ['src/**/*.svelte.{test,spec}.{js,ts}'],
 					exclude: ['src/lib/server/**'],
